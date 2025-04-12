@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Facebook Video Crawler</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 40px; background-color: #f9f9f9; }
+        h1 { text-align: center; }
+        form {
+            max-width: 600px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 12px;
+        }
+        input[type="submit"] {
+            padding: 10px 20px;
+            background: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        input[type="submit"]:hover {
+            background: #0056b3;
+        }
+        table {
+            margin-top: 40px;
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid #ccc;
+            padding: 10px;
+        }
+        th {
+            background: #eee;
+        }
+    </style>
+</head>
+<body>
+    <h1>Facebook Video Crawler</h1>
+    <form method="POST">
+        <input type="text" name="video_url" placeholder="Nhập link video Facebook..." required />
+        <input type="submit" value="Lấy dữ liệu video">
+    </form>
+
+    {% if results %}
+    <table>
+        <tr>
+            <th>URL</th>
+            <th>Status Code</th>
+            <th>Content-Type</th>
+            <th>Content-Length</th>
+        </tr>
+        {% for result in results %}
+        <tr>
+            <td><a href="{{ result.url }}" target="_blank">{{ result.url }}</a></td>
+            <td>{{ result.status }}</td>
+            <td>{{ result.content_type }}</td>
+            <td>{{ result.content_length }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% endif %}
+</body>
+</html>

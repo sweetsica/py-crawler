@@ -1,154 +1,56 @@
-from seleniumwire import webdriver  #cho phép bạn chặn, ghi lại, can thiệp vào các request và response HTTP khi trình duyệt hoạt động
-import time #dùng để thao tác với thời gian.
-import json #làm việc với dữ liệu JSON trong Python.
-import os #tương tác với hệ điều hành: tạo thư mục, lấy biến môi trường, xử lý đường dẫn,...
+from flask import Flask, request, render_template
+from seleniumwire import webdriver
 from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
-    #urlparse(url) → phân tích URL thành các thành phần: scheme, netloc, path, params, query, fragment.
-    #parse_qs(query_string) → chuyển query string thành dictionary.
-    #urlencode(dict) → tạo query string từ dictionary.
-    #urlunparse() → lắp ráp lại URL từ các thành phần.
+import time
 
+app = Flask(__name__)
 
-# Tạo danh sách để lưu kết quả
-results = []
-
-# Cấu hình driver
-options = webdriver.ChromeOptions()
-options.add_argument("--disable-blink-features=AutomationControlled")
-
-# Khởi tạo trình duyệt với selenium-wire
-driver = webdriver.Chrome(options=options)
-
-# Truy cập link video Facebook
-url = 'https://www.facebook.com/stories/1912229028852168/UzpfSVNDOjk2NDg4NjYyMjQ2NDYyOA==/?bucket_count=9&source=story_tray'
-driver.get(url)
-
-# Chờ vài giây cho các request được gửi đi
-time.sleep(10)
-
-# Duyệt qua các request đã bắt được
-for request in driver.requests:
-    if request.response:
-        print("URL:", request.url)
-        print("Status Code:", request.response.status_code)
-        print("Response Headers:")
-        for header, value in request.response.headers.items():
-            print(f"  {header}: {value}")
-        print("-" * 50)
-
-# sleep(15)
-
-
-# Duyệt qua các request đã bắt được
-for request in driver.requests:
-    if request.response:
-        # Kiểm tra content-type và content-length
-        content_type = request.response.headers.get('content-type', '')
-        content_length = request.response.headers.get('content-length', '0')
-
-        # Chuyển content-length về kiểu số nguyên để so sánh
-        try:
-            content_length = int(content_length)
-        except ValueError:
-            content_length = 0
-
-        # Lọc theo điều kiện
-        if 'video/mp4' in content_type and content_length > 10000:
-            result = {
-                "URL": request.url,
-                "Status Code": request.response.status_code,
-                "Content-Type": content_type,
-                "Content-Length": content_length
-            }
-            results.append(result)
-
-# input("Nhấn Enter để tiếp tục...")
-
-# Tạo nội dung HTML từ kết quả
-html_content = """
-<html>
-<head>
-    <title>Video Requests (MP4)</title>
-    <style>
-        body { font-family: Arial, sans-serif; }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { padding: 8px 12px; border: 1px solid #ddd; text-align: left; }
-        th { background-color: #f2f2f2; }
-        h1 { text-align: center; }
-    </style>
-</head>
-<body>
-    <h1>Video Requests (MP4)</h1>
-    <table>
-        <tr><th>URL</th><th>Status Code</th><th>Content-Type</th><th>Content-Length</th></tr>"""
-# Hàm để loại bỏ tham số bytestart và byteend khỏi URL
 def remove_bytestart_and_byteend(url):
     parsed_url = urlparse(url)
     query_params = parse_qs(parsed_url.query)
-    
-    # Loại bỏ các tham số 'bytestart' và 'byteend'
     query_params.pop('bytestart', None)
     query_params.pop('byteend', None)
-    
-    # Tạo lại URL không có tham số 'bytestart' và 'byteend'
     new_query = urlencode(query_params, doseq=True)
     new_url = parsed_url._replace(query=new_query)
-    
     return urlunparse(new_url)
 
-# Thêm các kết quả vào bảng HTML với liên kết
-for result in results:
-    clean_url = remove_bytestart_and_byteend(result['URL'])
-    html_content += f"""
-        <tr>
-            <td><a href="{clean_url}" target="_blank">{clean_url}</a></td>
-            <td>{result['Status Code']}</td>
-            <td>{result['Content-Type']}</td>
-            <td>{result['Content-Length']}</td>
-        </tr>"""
+@app.route('/', methods=['GET', 'POST'])
+def index():
+    results = []
 
-html_content += """
-    </table>
-</body>
-</html>
-"""
+    if request.method == 'POST':
+        video_url = request.form['video_url']
 
-# Thêm các kết quả vào bảng HTML
-for result in results:
-    html_content += f"""
-        <tr>
-            <td>{result['URL']}</td>
-            <td>{result['Status Code']}</td>
-            <td>{result['Content-Type']}</td>
-            <td>{result['Content-Length']}</td>
-        </tr>"""
+        # Cấu hình Selenium
+        options = webdriver.ChromeOptions()
+        options.add_argument("--disable-blink-features=AutomationControlled")
+        options.add_argument("--headless")  # Chạy ngầm không bật trình duyệt
 
-html_content += """
-    </table>
-</body>
-</html>
-"""
+        driver = webdriver.Chrome(options=options)
+        driver.get(video_url)
+        time.sleep(10)
 
-# Lưu HTML vào file result.html
-file_path = "result.html"
-with open(file_path, "w") as f:
-    f.write(html_content)
+        for request_ in driver.requests:
+            if request_.response:
+                content_type = request_.response.headers.get('content-type', '')
+                content_length = request_.response.headers.get('content-length', '0')
+                try:
+                    content_length_int = int(content_length)
+                except ValueError:
+                    continue
 
-# Mở tab mới và hiển thị nội dung từ file HTML
-driver.execute_script("window.open('');")  # Mở tab mới
-driver.switch_to.window(driver.window_handles[-1])  # Chuyển đến tab mới
+                if 'video/mp4' in content_type and content_length_int > 10000:
+                    clean_url = remove_bytestart_and_byteend(request_.url)
+                    results.append({
+                        'url': clean_url,
+                        'status': request_.response.status_code,
+                        'content_type': content_type,
+                        'content_length': content_length
+                    })
 
-# Mở file HTML trong tab mới
-driver.get(f"file:///{os.path.abspath(file_path)}")
+        driver.quit()
 
-# Chờ vài giây trước khi đóng trình duyệt
-time.sleep(10)
+    return render_template('index.html', results=results)
 
-# Đóng trình duyệt
-# driver.quit()
-
-input("Nhấn Enter để tiếp tục...")
-
-# pip install selenium-wire selenium
-# pip install packaging setuptools
-# pip install blinker
+if __name__ == '__main__':
+    app.run(debug=True)
