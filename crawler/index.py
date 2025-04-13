@@ -47,6 +47,7 @@ def index():
                         'content_type': content_type,
                         'content_length': content_length
                     })
+                results.sort(key=lambda x: int(x['content_length']), reverse=True)
 
         driver.quit()
 

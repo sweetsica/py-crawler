@@ -1,0 +1,15 @@
+# Đây là các package chính
+blinker==1.7.0 #Dùng bản cũ để tương thích với selenium-wire
+selenium-wire
+flask==3.1.0
+
+
+#cài bằng lệnh
+#pip install -r requirements.txt
+
+
+#gỡ bỏ không tương thích
+#pip uninstall selenium-wire blinker
+
+#cài bản vá https cho selenium-wire
+#pip install git+https://github.com/yourname/selenium-wire-fixed.git

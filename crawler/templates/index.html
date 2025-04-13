@@ -3,8 +3,16 @@
 <head>
     <title>Facebook Video Crawler</title>
     <style>
-        body { font-family: Arial, sans-serif; padding: 40px; background-color: #f9f9f9; }
-        h1 { text-align: center; }
+        body {
+            font-family: Arial, sans-serif;
+            padding: 40px;
+            background-color: #f9f9f9;
+        }
+    
+        h1 {
+            text-align: center;
+        }
+    
         form {
             max-width: 600px;
             margin: auto;
@@ -12,11 +20,13 @@
             padding: 20px;
             box-shadow: 0 0 10px rgba(0,0,0,0.1);
         }
+    
         input[type="text"] {
-            width: 100%;
+            width: 90%;
             padding: 10px;
             margin-bottom: 12px;
         }
+    
         input[type="submit"] {
             padding: 10px 20px;
             background: #007bff;
@@ -24,22 +34,52 @@
             border: none;
             cursor: pointer;
         }
+    
         input[type="submit"]:hover {
             background: #0056b3;
         }
-        table {
+    
+        .table-container {
             margin-top: 40px;
+            overflow-x: auto; /* Cho phép cuộn ngang nếu bảng quá rộng */
+        }
+    
+        table {
             width: 100%;
             border-collapse: collapse;
+            table-layout: fixed; /* Bắt buộc để cột tuân theo width đã set */
         }
+    
         th, td {
             border: 1px solid #ccc;
             padding: 10px;
+            word-wrap: break-word;
+            overflow-wrap: break-word; /* Ép từ dài phải xuống dòng */
+            white-space: normal;
         }
+    
         th {
             background: #eee;
         }
+    
+        th:nth-child(1), td:nth-child(1) {
+            width: 40%; /* Cột URL chiếm 40% */
+        }
+    
+        a {
+            color: #007bff;
+            text-decoration: none;
+            word-break: break-all;
+        }
+    
+        a:hover {
+            text-decoration: underline;
+        }
+        .center{
+            text-align: center;
+        }
     </style>
+    
 </head>
 <body>
     <h1>Facebook Video Crawler</h1>
@@ -49,22 +89,25 @@
     </form>
 
     {% if results %}
-    <table>
-        <tr>
-            <th>URL</th>
-            <th>Status Code</th>
-            <th>Content-Type</th>
-            <th>Content-Length</th>
-        </tr>
-        {% for result in results %}
-        <tr>
-            <td><a href="{{ result.url }}" target="_blank">{{ result.url }}</a></td>
-            <td>{{ result.status }}</td>
-            <td>{{ result.content_type }}</td>
-            <td>{{ result.content_length }}</td>
-        </tr>
-        {% endfor %}
-    </table>
+    <div class="table-container">
+        <table>
+            <tr>
+                <th>URL</th>
+                <th>Status Code</th>
+                <th>Content-Type</th>
+                <th>Content-Length</th>
+            </tr>
+            {% for result in results %}
+            <tr>
+                <!-- <td><a href="{{ result.url }}" target="_blank">{{ result.url }}</a></td> -->
+                <td><a href="{{ result['url'] }}" target="_blank">{{ result['url'].split('&bytestart=')[0] }}</a></td>
+                <td class="center">{{ result.status }}</td>
+                <td class="center">{{ result.content_type }}</td>
+                <td class="center">{{ result.content_length }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
     {% endif %}
 </body>
 </html>
