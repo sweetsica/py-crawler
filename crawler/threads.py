@@ -87,8 +87,8 @@ HTML_TEMPLATE = '''
                     <video src="{{ item.url|safe }}" controls></video>
                 {% endif %}
                 <div><strong>Tiêu đề:</strong> {{ item.title }}</div>
-                <div><strong>Mô tả:</strong> {{ item.desc }}</div>
-                <a href="{{ item.url|safe }}" target="_blank" class="media-link">Xem media gốc</a>
+                <div><strong>Account:</strong> <a href="https://www.threads.net/@{{ item.acc }}">{{ item.acc }}</a></div>
+                <div><strong>Media:</strong><a href="{{ item.url|safe }}" target="_blank" class="media-link">Xem</a></div>
             </div>
             {% endfor %}
         </div>
@@ -129,6 +129,8 @@ def download_and_save_media(url):
 def index():
     media = []
     raw_div = ""
+    title = ""
+    account = ""
 
     if request.method == "POST":
         url = request.form["url"]
@@ -145,6 +147,20 @@ def index():
 
             container = driver.find_element(By.XPATH, '(//div[@data-pressable-container])[1]')
             # raw_div = container.get_attribute("outerHTML")
+
+            try:
+                account_el = driver.find_element(By.XPATH, '(//div[@data-pressable-container])[1]/div[1]/div[2]/div[1]/div[1]/span[1]/div[1]/span[1]/div[1]/a/span[1]/span[1]')
+                account = account_el.text.strip()
+            except Exception as e:
+                print("Không tìm thấy tài khoản:", e)
+                account = ""
+
+            try:
+                title_el = driver.find_element(By.XPATH, '(//div[@data-pressable-container])[1]/div[1]/div[3]/div/div[1]/span[1]')
+                title_raw = title_el.text.strip()
+                title = title_raw.replace("Translate", "").strip()
+            except Exception as e:
+                print("Không tìm thấy tiêu đề:", e)
 
             # Kiểm tra ảnh bên trong container
             img_elements = container.find_elements(By.XPATH, './/img[@draggable="false"]')
@@ -167,8 +183,8 @@ def index():
                             'type': 'image',
                             'url': original_url,
                             'local_url': local_url,
-                            'title': 'Ảnh từ bài viết',
-                            'desc': 'Được lấy từ srcset hoặc src'
+                            'title': title or 'Ảnh từ bài viết',
+                            'acc': account or 'Được lấy từ srcset hoặc src'
                         })
 
             # Tìm video có playsinline bên trong container
@@ -180,8 +196,8 @@ def index():
                         'type': 'video',
                         'url': src,
                         'local_url': src,
-                        'title': 'Video từ bài viết',
-                        'desc': 'Có playsinline'
+                        'title': title or 'Video từ bài viết',
+                        'acc': account or 'Có playsinline'
                     })
 
         except Exception as e:
@@ -190,7 +206,7 @@ def index():
         finally:
             driver.quit()
 
-    return render_template_string(HTML_TEMPLATE, media=media, raw_div=raw_div)
+    return render_template_string(HTML_TEMPLATE, media=media, raw_div=raw_div, title=title, account=account)    
 
 if __name__ == '__main__':
     os.makedirs("static/images", exist_ok=True)
