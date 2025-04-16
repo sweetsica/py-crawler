@@ -48,6 +48,17 @@ HTML_TEMPLATE = '''
             font-size: 12px;
             display: block;
             margin-top: 8px;
+            color: #007bff;
+            text-decoration: none;
+        }
+        a.media-link:hover {
+            text-decoration: underline;
+        }
+        .raw-html {
+            border: 1px solid #ccc;
+            padding: 15px;
+            margin: 20px 0;
+            background-color: #f0f0f0;
         }
     </style>
 </head>
@@ -60,7 +71,9 @@ HTML_TEMPLATE = '''
 
     {% if raw_div %}
         <h3>HTML của div đầu tiên:</h3>
-        <pre>{{ raw_div|safe }}</pre>
+        <div class="raw-html">
+            {{ raw_div|safe }}
+        </div>
     {% endif %}
 
     {% if media %}
@@ -75,7 +88,7 @@ HTML_TEMPLATE = '''
                 {% endif %}
                 <div><strong>Tiêu đề:</strong> {{ item.title }}</div>
                 <div><strong>Mô tả:</strong> {{ item.desc }}</div>
-                <a href="{{ item.url|safe }}" target="_blank" class="media-link">Link Media</a>
+                <a href="{{ item.url|safe }}" target="_blank" class="media-link">Xem media gốc</a>
             </div>
             {% endfor %}
         </div>
@@ -87,19 +100,26 @@ HTML_TEMPLATE = '''
 def download_and_save_media(url):
     try:
         filename = hashlib.md5(url.encode()).hexdigest()
-        ext = mimetypes.guess_extension(requests.head(url).headers.get("Content-Type", "image/jpeg"))
+        try:
+            head = requests.head(url, allow_redirects=True, headers={"User-Agent": "Mozilla/5.0"})
+            content_type = head.headers.get("Content-Type", "image/jpeg")
+            ext = mimetypes.guess_extension(content_type.split(";")[0])
+        except Exception as e:
+            print(f"Lỗi HEAD: {e}")
+            ext = ".jpg"
+
         if not ext:
             ext = ".jpg"
+
         filename += ext
         filepath = f"static/images/{filename}"
 
         if not os.path.exists(filepath):
-            r = requests.get(url, stream=True)
+            r = requests.get(url, stream=True, headers={"User-Agent": "Mozilla/5.0"})
             if r.status_code == 200:
                 with open(filepath, 'wb') as f:
                     for chunk in r.iter_content(1024):
                         f.write(chunk)
-
         return f"/static/images/{filename}"
     except Exception as e:
         print(f"Lỗi tải media: {e}")
@@ -124,9 +144,9 @@ def index():
             time.sleep(5)
 
             container = driver.find_element(By.XPATH, '(//div[@data-pressable-container])[1]')
-            raw_div = container.get_attribute("outerHTML")
+            # raw_div = container.get_attribute("outerHTML")
 
-            # Lấy ảnh từ srcset
+            # Kiểm tra ảnh bên trong container
             img_elements = container.find_elements(By.XPATH, './/img[@draggable="false"]')
             for img in img_elements:
                 srcset = img.get_attribute("srcset")
@@ -151,7 +171,7 @@ def index():
                             'desc': 'Được lấy từ srcset hoặc src'
                         })
 
-            # Tìm video có playsinline
+            # Tìm video có playsinline bên trong container
             video_elements = container.find_elements(By.XPATH, './/video[@playsinline]')
             for video in video_elements:
                 src = video.get_attribute("src")
