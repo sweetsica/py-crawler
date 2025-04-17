@@ -17,7 +17,8 @@ form_template = """
 </form>
 {% if video_url %}
   <h3>Video HD URL:</h3>
-  <p><a href="{{ video_url }}" target="_blank">{{ video_url }}</a></p>
+    {#<p><a href="{{ video_url }}" target="_blank">{{ video_url }}</a></p>#}
+  <video src="{{ video_url|safe }}" controls></video>
 {% elif error %}
   <p style="color:red">{{ error }}</p>
 {% endif %}
