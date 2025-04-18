@@ -13,3 +13,6 @@ flask==3.1.0
 
 #cài bản vá https cho selenium-wire
 #pip install git+https://github.com/yourname/selenium-wire-fixed.git
+
+#pip install flask selenium requests beautifulsoup4
+
