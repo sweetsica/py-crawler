@@ -121,9 +121,16 @@ async def test_url(url: str = Form(...)):
 
 @app.post("/api/extract")
 async def api_extract(request: Request):
-    # API nhận JSON {"url": "..."}
-    data = await request.json()
-    url = data.get("url")
+    # Hỗ trợ cả JSON và form-data
+    content_type = request.headers.get("content-type", "")
+    if "application/json" in content_type:
+        data = await request.json()
+        url = data.get("url")
+    else:
+        # form-data hoặc x-www-form-urlencoded
+        form = await request.form()
+        url = form.get("url")
+    
     if not url:
         raise HTTPException(status_code=400, detail="Thiếu trường 'url'")
     
