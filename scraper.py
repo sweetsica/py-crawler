@@ -97,6 +97,30 @@ class MediaScraper:
                 }
             print("[!] API không trả về media, fallback sang browser...")
 
+        # Instagram: Thử API trước (nhanh, không cần browser)
+        if platform == "instagram":
+            print(f"[*] Instagram detected, thử API trước...")
+            api_media = await self._scrape_instagram_api(url, cookie_file)
+            if api_media:
+                return {
+                    "platform": platform,
+                    "url": url,
+                    "media": self._deduplicate(api_media)
+                }
+            print("[!] Instagram API không trả về media, fallback sang browser...")
+
+        # Facebook: Thử API trước (nhanh, không cần browser)
+        if platform == "facebook":
+            print(f"[*] Facebook detected, thử API trước...")
+            api_media = await self._scrape_facebook_api(url, cookie_file)
+            if api_media:
+                return {
+                    "platform": platform,
+                    "url": url,
+                    "media": self._deduplicate(api_media)
+                }
+            print("[!] Facebook API không trả về media, fallback sang browser...")
+
         await self.init_browser()
         
         # Create a new context for each request to avoid cookie bleeding
@@ -183,6 +207,148 @@ class MediaScraper:
         
         return self._deduplicate(res)
 
+    def _get_facebook_video_id(self, url):
+        """Extract video/reel ID from a Facebook URL."""
+        # /reel/1234567890
+        match = re.search(r'/reel/(\d+)', url)
+        if match:
+            return match.group(1)
+        # /videos/1234567890
+        match = re.search(r'/videos/(\d+)', url)
+        if match:
+            return match.group(1)
+        # /watch/?v=1234567890
+        match = re.search(r'[?&]v=(\d+)', url)
+        if match:
+            return match.group(1)
+        # fb.watch/xxxxx
+        return None
+
+    async def _scrape_facebook_api(self, url, cookie_file="json/fb.json"):
+        """Scrape Facebook video/reel by fetching page HTML and extracting video URLs from embedded data."""
+        
+        # Load cookies from file
+        cookies = {}
+        if not cookie_file.startswith("json/"):
+            cookie_file = os.path.join("json", cookie_file)
+
+        if os.path.exists(cookie_file):
+            try:
+                with open(cookie_file, 'r', encoding='utf-8') as f:
+                    c_data = json.load(f)
+                    if isinstance(c_data, dict) and "cookies" in c_data:
+                        c_data = c_data["cookies"]
+                    for c in c_data:
+                        cookies[c["name"]] = c["value"]
+                print(f"[*] Đã tải cookies từ {cookie_file} cho Facebook API.")
+            except Exception as e:
+                print(f"[!] Lỗi đọc cookie cho Facebook API: {e}")
+        else:
+            print(f"[!] Cảnh báo: Không tìm thấy file cookie {cookie_file}.")
+            return []
+
+        cookie_str = "; ".join([f"{k}={v}" for k, v in cookies.items()])
+
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.9",
+            "Accept-Encoding": "gzip, deflate, br",
+            "Connection": "keep-alive",
+            "Sec-Fetch-Dest": "document",
+            "Sec-Fetch-Mode": "navigate",
+            "Sec-Fetch-Site": "none",
+            "Sec-Fetch-User": "?1",
+            "Upgrade-Insecure-Requests": "1",
+            "Cookie": cookie_str,
+        }
+
+        print(f"[*] Đang fetch Facebook page: {url}")
+
+        try:
+            async with httpx.AsyncClient(follow_redirects=True, timeout=30.0) as client:
+                response = await client.get(url, headers=headers)
+                print(f"[*] Facebook page response status: {response.status_code}")
+
+                if response.status_code != 200:
+                    print(f"[!] Facebook trả về lỗi: {response.status_code}")
+                    return []
+
+                html = response.text
+                media_list = []
+
+                # Extract HD video URLs from page source
+                # Facebook embeds video data in JSON within script tags
+                # Pattern 1: browser_native_hd_url / browser_native_sd_url
+                hd_patterns = [
+                    r'browser_native_hd_url\\":\\"(.*?)\\"',
+                    r'browser_native_hd_url":\s*"(.*?)"',
+                    r'playable_url_quality_hd\\":\\"(.*?)\\"',
+                    r'playable_url_quality_hd":\s*"(.*?)"',
+                ]
+                sd_patterns = [
+                    r'browser_native_sd_url\\":\\"(.*?)\\"',
+                    r'browser_native_sd_url":\s*"(.*?)"',
+                    r'playable_url\\":\\"(.*?)\\"',
+                    r'playable_url":\s*"(.*?)"',
+                ]
+
+                # Try HD first
+                video_url = None
+                for pattern in hd_patterns:
+                    matches = re.findall(pattern, html)
+                    if matches:
+                        # Unescape the URL
+                        video_url = matches[0].replace('\\/', '/').replace('\\u0025', '%')
+                        # Decode unicode escapes
+                        try:
+                            video_url = video_url.encode().decode('unicode_escape')
+                        except:
+                            pass
+                        print(f"[*] Tìm thấy HD video: {video_url[:80]}...")
+                        break
+
+                # Try SD if no HD found
+                if not video_url:
+                    for pattern in sd_patterns:
+                        matches = re.findall(pattern, html)
+                        if matches:
+                            video_url = matches[0].replace('\\/', '/').replace('\\u0025', '%')
+                            try:
+                                video_url = video_url.encode().decode('unicode_escape')
+                            except:
+                                pass
+                            print(f"[*] Tìm thấy SD video: {video_url[:80]}...")
+                            break
+
+                if video_url and video_url.startswith('http'):
+                    media_list.append({"type": "video", "url": video_url})
+
+                # Also try to extract images from og:image meta tag
+                og_image = re.findall(r'<meta\s+property="og:image"\s+content="(.*?)"', html)
+                if not og_image:
+                    og_image = re.findall(r'<meta\s+content="(.*?)"\s+property="og:image"', html)
+                for img_url in og_image:
+                    if img_url and 'fbcdn' in img_url:
+                        img_url = img_url.replace('&amp;', '&')
+                        media_list.append({"type": "image", "url": img_url})
+
+                if media_list:
+                    return media_list
+                
+                print("[!] Không tìm thấy video URL trong page source")
+                # Debug: check if we got the right page
+                title_match = re.search(r'<title>(.*?)</title>', html)
+                if title_match:
+                    print(f"[!] Page title: {title_match.group(1)[:100]}")
+
+        except Exception as e:
+            print(f"[!] Lỗi gọi Facebook API: {e}")
+            import traceback
+            traceback.print_exc()
+
+        return []
+
     async def _scrape_instagram(self, page):
         res = []
         print("[*] Đang cào Instagram...")
@@ -205,6 +371,210 @@ class MediaScraper:
                 res.append({"type": "image", "url": src})
         
         return self._deduplicate(res)
+
+    def _get_instagram_shortcode(self, url):
+        """Extract shortcode from an Instagram URL.
+        Supports: /p/CODE/, /reel/CODE/, /reels/CODE/, /tv/CODE/
+        """
+        match = re.search(r'/(p|reel|reels|tv)/([A-Za-z0-9_-]+)', url)
+        return match.group(2) if match else None
+
+    async def _scrape_instagram_api(self, url, cookie_file="json/insta.json"):
+        """Use Instagram GraphQL API to get media from a post."""
+        shortcode = self._get_instagram_shortcode(url)
+        if not shortcode:
+            print("[!] Không thể lấy shortcode từ URL")
+            return []
+
+        # Load cookies from file
+        cookies = {}
+        if not cookie_file.startswith("json/"):
+            cookie_file = os.path.join("json", cookie_file)
+
+        if os.path.exists(cookie_file):
+            try:
+                with open(cookie_file, 'r', encoding='utf-8') as f:
+                    c_data = json.load(f)
+                    if isinstance(c_data, dict) and "cookies" in c_data:
+                        c_data = c_data["cookies"]
+                    for c in c_data:
+                        cookies[c["name"]] = c["value"]
+                print(f"[*] Đã tải cookies từ {cookie_file} cho Instagram API.")
+            except Exception as e:
+                print(f"[!] Lỗi đọc cookie cho Instagram API: {e}")
+        else:
+            print(f"[!] Cảnh báo: Không tìm thấy file cookie {cookie_file}.")
+
+        csrf_token = cookies.get("csrftoken", "")
+        session_id = cookies.get("sessionid", "")
+        if not session_id:
+            print("[!] Không tìm thấy sessionid trong cookies")
+            return []
+
+        # Build cookie header string
+        cookie_str = "; ".join([f"{k}={v}" for k, v in cookies.items()])
+
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+            "Accept": "*/*",
+            "Accept-Language": "en-US,en;q=0.9",
+            "X-CSRFToken": csrf_token,
+            "X-IG-App-ID": "936619743392459",
+            "X-ASBD-ID": "129477",
+            "X-IG-WWW-Claim": "0",
+            "X-Requested-With": "XMLHttpRequest",
+            "Referer": f"https://www.instagram.com/p/{shortcode}/",
+            "Origin": "https://www.instagram.com",
+            "Cookie": cookie_str,
+        }
+
+        print(f"[*] Gọi Instagram API cho shortcode: {shortcode}")
+
+        # Approach 1: Try the graphql/query endpoint with doc_id
+        try:
+            async with httpx.AsyncClient(follow_redirects=True, timeout=30.0) as client:
+                # Try fetching via the media info API
+                variables = json.dumps({
+                    "shortcode": shortcode,
+                    "fetch_tagged_user_count": None,
+                    "hoisted_comment_id": None,
+                    "hoisted_reply_id": None,
+                })
+                
+                # Try with the graphql query approach
+                api_url = "https://www.instagram.com/graphql/query"
+                data = {
+                    "variables": variables,
+                    "doc_id": "8845758582119845",  # PolarisPostActionLoadPostQueryQuery
+                }
+                
+                response = await client.post(api_url, headers=headers, data=data)
+                print(f"[*] Instagram API response status: {response.status_code}")
+
+                if response.status_code == 200:
+                    result = response.json()
+                    media_list = self._extract_instagram_media(result)
+                    if media_list:
+                        return media_list
+                    print("[!] GraphQL query trả về nhưng không parse được media")
+                else:
+                    print(f"[!] Instagram API trả về lỗi: {response.status_code}")
+                    print(f"[!] Response: {response.text[:500]}")
+
+                # Approach 2: Try the /api/v1/media endpoint
+                print("[*] Thử approach 2: /api/v1/media...")
+                info_url = f"https://www.instagram.com/api/v1/media/{shortcode}/info/"
+                response2 = await client.get(info_url, headers=headers)
+                print(f"[*] Media info API status: {response2.status_code}")
+
+                if response2.status_code == 200:
+                    result2 = response2.json()
+                    media_list2 = self._extract_instagram_media_v1(result2)
+                    if media_list2:
+                        return media_list2
+
+        except Exception as e:
+            print(f"[!] Lỗi gọi Instagram API: {e}")
+            import traceback
+            traceback.print_exc()
+
+        return []
+
+    def _extract_instagram_media(self, data):
+        """Extract media from Instagram GraphQL API response."""
+        media_list = []
+        try:
+            # Navigate to the media data
+            xdt_shortcode_media = (data.get("data", {})
+                .get("xdt_shortcode_media", {}))
+            
+            if not xdt_shortcode_media:
+                # Try alternative path
+                xdt_shortcode_media = (data.get("data", {})
+                    .get("shortcode_media", {}))
+            
+            if not xdt_shortcode_media:
+                print("[!] Không tìm thấy xdt_shortcode_media trong response")
+                print(f"[!] Response keys: {list(data.get('data', {}).keys())}")
+                return []
+
+            # Check if it's a carousel (sidecar) with multiple items
+            typename = xdt_shortcode_media.get("__typename", "")
+            
+            if typename == "XDTGraphSidecar" or "edge_sidecar_to_children" in xdt_shortcode_media:
+                # Carousel/album post
+                edges = (xdt_shortcode_media.get("edge_sidecar_to_children", {})
+                    .get("edges", []))
+                for edge in edges:
+                    node = edge.get("node", {})
+                    self._parse_instagram_node(node, media_list)
+            else:
+                # Single media post
+                self._parse_instagram_node(xdt_shortcode_media, media_list)
+
+        except Exception as e:
+            print(f"[!] Lỗi parse Instagram API response: {e}")
+            import traceback
+            traceback.print_exc()
+
+        return media_list
+
+    def _parse_instagram_node(self, node, media_list):
+        """Parse a single Instagram media node (image or video)."""
+        is_video = node.get("is_video", False)
+        
+        if is_video:
+            video_url = node.get("video_url", "")
+            if video_url:
+                print(f"[*] Tìm thấy video: {video_url[:80]}...")
+                media_list.append({"type": "video", "url": video_url})
+        else:
+            # Get the highest quality image
+            display_url = node.get("display_url", "")
+            if not display_url:
+                display_url = node.get("display_src", "")
+            if display_url:
+                print(f"[*] Tìm thấy ảnh: {display_url[:80]}...")
+                media_list.append({"type": "image", "url": display_url})
+
+    def _extract_instagram_media_v1(self, data):
+        """Extract media from Instagram /api/v1/media/ response."""
+        media_list = []
+        try:
+            items = data.get("items", [])
+            for item in items:
+                media_type = item.get("media_type", 0)
+                
+                if media_type == 8:  # Carousel
+                    carousel_media = item.get("carousel_media", [])
+                    for cm in carousel_media:
+                        self._parse_instagram_v1_item(cm, media_list)
+                else:
+                    self._parse_instagram_v1_item(item, media_list)
+        except Exception as e:
+            print(f"[!] Lỗi parse Instagram v1 API response: {e}")
+
+        return media_list
+
+    def _parse_instagram_v1_item(self, item, media_list):
+        """Parse a single item from Instagram v1 API."""
+        media_type = item.get("media_type", 0)
+        
+        if media_type == 2:  # Video
+            video_versions = item.get("video_versions", [])
+            if video_versions:
+                # Get highest quality (first one is usually the best)
+                best_video = video_versions[0]
+                url = best_video.get("url", "")
+                if url:
+                    media_list.append({"type": "video", "url": url})
+        elif media_type == 1:  # Image
+            candidates = item.get("image_versions2", {}).get("candidates", [])
+            if candidates:
+                best_img = candidates[0]
+                url = best_img.get("url", "")
+                if url:
+                    media_list.append({"type": "image", "url": url})
 
     def _get_tweet_id(self, url):
         """Extract tweet ID from a Twitter/X URL."""
