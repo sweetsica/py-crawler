@@ -138,4 +138,5 @@ async def api_extract(request: Request):
     return JSONResponse(content=result)
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    port = int(os.environ.get("PORT", 2603))
+    uvicorn.run(app, host="0.0.0.0", port=port)

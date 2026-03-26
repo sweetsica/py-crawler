@@ -285,16 +285,24 @@ class MediaScraper:
                     r'browser_native_hd_url":\s*"(.*?)"',
                     r'playable_url_quality_hd\\":\\"(.*?)\\"',
                     r'playable_url_quality_hd":\s*"(.*?)"',
+                    r'hd_src\\":\\"(.*?)\\"',
+                    r'hd_src":\s*"(.*?)"',
                 ]
                 sd_patterns = [
                     r'browser_native_sd_url\\":\\"(.*?)\\"',
                     r'browser_native_sd_url":\s*"(.*?)"',
                     r'playable_url\\":\\"(.*?)\\"',
                     r'playable_url":\s*"(.*?)"',
+                    r'sd_src\\":\\"(.*?)\\"',
+                    r'sd_src":\s*"(.*?)"',
                 ]
 
-                # Try HD first
+                # Additional search for video IDs or specific GraphQL markers
                 video_url = None
+                
+                # Check for "short_form_video_context" which is common for Reels
+                if 'short_form_video_context' in html:
+                    print("[*] Found short_form_video_context in HTML")
                 for pattern in hd_patterns:
                     matches = re.findall(pattern, html)
                     if matches:
@@ -520,21 +528,35 @@ class MediaScraper:
         return media_list
 
     def _parse_instagram_node(self, node, media_list):
-        """Parse a single Instagram media node (image or video)."""
+        """Parse a single Instagram media node (image or video), selecting highest quality."""
         is_video = node.get("is_video", False)
         
         if is_video:
+            # Try to find the best video version if available
             video_url = node.get("video_url", "")
+            video_versions = node.get("video_versions", [])
+            if video_versions:
+                # Sort by resolution (width * height) descending
+                video_versions.sort(key=lambda x: x.get("width", 0) * x.get("height", 0), reverse=True)
+                video_url = video_versions[0].get("url", video_url)
+            
             if video_url:
-                print(f"[*] Tìm thấy video: {video_url[:80]}...")
+                print(f"[*] Tìm thấy video (HQ): {video_url[:80]}...")
                 media_list.append({"type": "video", "url": video_url})
         else:
-            # Get the highest quality image
+            # Get the highest quality image from display_resources
             display_url = node.get("display_url", "")
+            display_resources = node.get("display_resources", [])
+            if display_resources:
+                # Sort by resolution descending
+                display_resources.sort(key=lambda x: x.get("config_width", 0) * x.get("config_height", 0), reverse=True)
+                display_url = display_resources[0].get("src", display_url)
+            
             if not display_url:
                 display_url = node.get("display_src", "")
+                
             if display_url:
-                print(f"[*] Tìm thấy ảnh: {display_url[:80]}...")
+                print(f"[*] Tìm thấy ảnh (HQ): {display_url[:80]}...")
                 media_list.append({"type": "image", "url": display_url})
 
     def _extract_instagram_media_v1(self, data):
@@ -557,13 +579,14 @@ class MediaScraper:
         return media_list
 
     def _parse_instagram_v1_item(self, item, media_list):
-        """Parse a single item from Instagram v1 API."""
+        """Parse a single item from Instagram v1 API, selecting highest quality."""
         media_type = item.get("media_type", 0)
         
         if media_type == 2:  # Video
             video_versions = item.get("video_versions", [])
             if video_versions:
-                # Get highest quality (first one is usually the best)
+                # Sort by resolution (width * height) descending
+                video_versions.sort(key=lambda x: x.get("width", 0) * x.get("height", 0), reverse=True)
                 best_video = video_versions[0]
                 url = best_video.get("url", "")
                 if url:
@@ -571,6 +594,8 @@ class MediaScraper:
         elif media_type == 1:  # Image
             candidates = item.get("image_versions2", {}).get("candidates", [])
             if candidates:
+                # Sort by resolution descending
+                candidates.sort(key=lambda x: x.get("width", 0) * x.get("height", 0), reverse=True)
                 best_img = candidates[0]
                 url = best_img.get("url", "")
                 if url:
