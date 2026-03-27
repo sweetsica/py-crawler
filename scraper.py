@@ -115,9 +115,29 @@ class MediaScraper:
         async def handle_request(request):
             req_url = request.url
             if any(ext in req_url.lower() for ext in [".mp4", ".m4v", ".mov"]):
-                 network_media.append({"type": "video", "url": req_url})
+                 # Check if it's an audio dash chunk via efg param
+                 is_audio = False
+                 if "efg=" in req_url:
+                     import urllib.parse
+                     import base64
+                     m = re.search(r'efg=([^&]+)', req_url)
+                     if m:
+                         efg_str = urllib.parse.unquote(m.group(1))
+                         pad = len(efg_str) % 4
+                         if pad: efg_str += '=' * (4 - pad)
+                         try:
+                             dec = base64.b64decode(efg_str.replace('-', '+').replace('_', '/')).decode('utf-8', errors='ignore')
+                             if "audi" in dec.lower() or "audio" in dec.lower():
+                                 is_audio = True
+                         except:
+                             pass
+                 if not is_audio:
+                     network_media.append({"type": "video", "url": req_url})
             elif any(ext in req_url.lower() for ext in [".jpg", ".jpeg", ".png", ".webp"]):
-                 if "twimg.com/media" in req_url or "pbs.twimg.com" in req_url or "fbcdn" in req_url or "cdninstagram" in req_url:
+                 # Không lấy ảnh từ network đối với Instagram để tránh rác (icon, tracking pixels, avatar)
+                 if platform == "instagram":
+                     pass
+                 elif "twimg.com/media" in req_url or "pbs.twimg.com" in req_url or "fbcdn" in req_url:
                        if "/profile_images/" not in req_url:
                             network_media.append({"type": "image", "url": req_url})
 
@@ -127,7 +147,12 @@ class MediaScraper:
             print(f"[*] Đang truy cập URL: {url}")
             await page.goto(url, wait_until="domcontentloaded", timeout=90000)
             print("[*] Đã nhận dữ liệu sơ bộ, đang chờ trang render thêm...")
-            await asyncio.sleep(15)
+            
+            # Instagram chỉ cần 4s là đủ lấy mạng cho main video. Đợi lâu nó tải luôn video gợi ý rác.
+            if platform == "instagram":
+                await asyncio.sleep(4)
+            else:
+                await asyncio.sleep(15)
             
             title = await page.title()
             print(f"[*] Tiêu đề trang: {title}")
@@ -158,7 +183,7 @@ class MediaScraper:
         return {
             "platform": platform,
             "url": url,
-            "media": self._deduplicate(media_list)
+            "media": self._deduplicate(media_list, platform)
         }
 
     async def _scrape_facebook(self, page):
@@ -194,14 +219,18 @@ class MediaScraper:
                 res.append({"type": "video", "url": src})
 
         # Xử lý ảnh trong bài viết
-        imgs = await page.query_selector_all("div._aagv img")
+        # Ưu tiên lấy ảnh nằm trong <article> vì nó là nội dung chính
+        imgs = await page.query_selector_all("article img")
+        if not imgs:
+             imgs = await page.query_selector_all("div._aagv img")
         if not imgs:
              imgs = await page.query_selector_all("img")
         
         print(f"[*] Tìm thấy {len(imgs)} thẻ img")
         for img in imgs:
             src = await img.get_attribute("src")
-            if src and "cdninstagram" in src:
+            # Bỏ qua các ảnh quá nhỏ hoặc ảnh đại diện (thường có kích thước 150x150)
+            if src and "cdninstagram" in src and "150x150" not in src:
                 res.append({"type": "image", "url": src})
         
         return self._deduplicate(res)
@@ -448,11 +477,92 @@ class MediaScraper:
 
         return self._deduplicate(res)
 
-    def _deduplicate(self, media_list):
-        seen = set()
+    def _clean_url(self, url):
+        """Clean URLs by removing bytestart and byteend parameters to get full videos"""
+        if not url or not isinstance(url, str):
+            return url
+        url = re.sub(r'([?&])bytestart=\d+&?', r'\1', url)
+        url = re.sub(r'([?&])byteend=\d+&?', r'\1', url)
+        # Cleanup any resulting empty or redundant parameters
+        url = url.replace('?&', '?').replace('&&', '&').rstrip('?&')
+        return url
+
+    def _deduplicate(self, media_list, platform=None):
+        import urllib.parse
+        import base64
+        import json
+        seen_keys = set()
         unique = []
+        
+        # Nhóm video theo xpv_asset_id để lấy bitrate cao nhất, tránh trùng lặp do đa độ phân giải
+        asset_videos = {}
+        processed_list = []
+        
         for item in media_list:
-            if item["url"] not in seen:
+            cleaned_url = self._clean_url(item["url"])
+            if cleaned_url and cleaned_url.startswith("blob:"):
+                # Bỏ qua blob URLs vì không dùng được ở ngoài trình duyệt
+                continue
+                
+            item_copy = item.copy()
+            item_copy["url"] = cleaned_url
+            
+            asset_id = None
+            bitrate = -1
+            
+            if item.get("type") == "video" and "efg=" in cleaned_url:
+                m = re.search(r'efg=([^&]+)', cleaned_url)
+                if m:
+                    efg_str = urllib.parse.unquote(m.group(1))
+                    pad = len(efg_str) % 4
+                    if pad: efg_str += '=' * (4 - pad)
+                    try:
+                        dec = base64.b64decode(efg_str.replace('-', '+').replace('_', '/')).decode('utf-8', errors='ignore')
+                        efg_data = json.loads(dec)
+                        # IG thường dùng xpv_asset_id, FB có thể dùng video_id
+                        asset_id = str(efg_data.get("xpv_asset_id", efg_data.get("video_id", "")))
+                        if not asset_id or asset_id == "None":
+                            asset_id = None
+                        bitrate = int(efg_data.get("bitrate", -1))
+                    except Exception:
+                        pass
+                        
+            if asset_id:
+                # Nếu Asset ID đã tồn tại, chỉ giữ lại bản có bitrate cao nhất
+                if asset_id not in asset_videos or bitrate > asset_videos[asset_id]["bitrate"]:
+                    asset_videos[asset_id] = {"item": item_copy, "bitrate": bitrate}
+            else:
+                # Ảnh hoặc video ko có efg đưa vào danh sách chung
+                processed_list.append(item_copy)
+                
+        # Lấy các video duy nhất có chất lượng cao nhất đã được gộp
+        for v in asset_videos.values():
+            processed_list.append(v["item"])
+            
+        # Lọc trùng lặp thông thường dựa theo path (phòng hờ backup)
+        for item in processed_list:
+            cleaned_url = item["url"]
+            try:
+                parsed = urllib.parse.urlparse(cleaned_url)
+                if item.get("type") == "video" and ("fbcdn" in cleaned_url or "cdninstagram" in cleaned_url):
+                    key = parsed.path
+                else:
+                    key = parsed.path if parsed.path else cleaned_url
+            except Exception:
+                key = cleaned_url
+                
+            if key not in seen_keys:
                 unique.append(item)
-                seen.add(item["url"])
-        return unique
+                seen_keys.add(key)
+                
+        # Giới hạn số lượng trả về (cắt video lọt vào do mạng load ngầm)
+        final_unique = []
+        ig_video_count = 0
+        for item in unique:
+            if platform == "instagram" and item.get("type") == "video":
+                if ig_video_count >= 1:
+                    continue
+                ig_video_count += 1
+            final_unique.append(item)
+            
+        return final_unique
