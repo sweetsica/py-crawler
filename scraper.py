@@ -169,8 +169,9 @@ class MediaScraper:
 
             # Gộp network media (chỉ cho FB/IG, Twitter đã dùng API)
             if platform != "twitter":
-                # Kiểm tra xem danh sách cào từ DOM có thực sự chứa TỐI THIỂU 1 video gốc không
-                has_dom_video = any(item.get("type") == "video" for item in media_list)
+                # Kiểm tra xem TRÊN TRANG (DOM) có thực sự chứa thẻ <video> không
+                # Reel thường có thẻ video nhưng src có thể bị ẩn hoặc là blob: lúc cào bước 1
+                has_dom_video = await page.locator("video").count() > 0
                 
                 filtered_network_media = []
                 for net_item in network_media:
