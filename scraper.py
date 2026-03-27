@@ -169,7 +169,18 @@ class MediaScraper:
 
             # Gộp network media (chỉ cho FB/IG, Twitter đã dùng API)
             if platform != "twitter":
-                media_list.extend(network_media)
+                # Kiểm tra xem danh sách cào từ DOM có thực sự chứa TỐI THIỂU 1 video gốc không
+                has_dom_video = any(item.get("type") == "video" for item in media_list)
+                
+                filtered_network_media = []
+                for net_item in network_media:
+                    # Nếu bài đăng thuần là album ảnh (DOM không có thẻ <video>)
+                    # Mọi video mồi từ network (như reels gợi ý, video nền đăng nhập) đều bị chặn 100%
+                    if net_item.get("type") == "video" and not has_dom_video:
+                        continue
+                    filtered_network_media.append(net_item)
+                    
+                media_list.extend(filtered_network_media)
 
         except Exception as e:
             await context.close()
@@ -218,20 +229,46 @@ class MediaScraper:
             if src:
                 res.append({"type": "video", "url": src})
 
-        # Xử lý ảnh trong bài viết
-        # Ưu tiên lấy ảnh nằm trong <article> vì nó là nội dung chính
-        imgs = await page.query_selector_all("article img")
-        if not imgs:
-             imgs = await page.query_selector_all("div._aagv img")
-        if not imgs:
-             imgs = await page.query_selector_all("img")
+        # Cơ chế cào Album ưu việt:
+        # IG xoá ảnh khỏi DOM khi lướt sang trang mới (chống lag), nên phải bắt ảnh TỪNG KHUNG HÌNH một.
+        # IG bỏ thẻ <article> ở UI mới, nên ta dùng Toán Học (Bounding Box) để chặn grid thumbnails (rộng ~310px)
+        collected_srcs = set()
         
-        print(f"[*] Tìm thấy {len(imgs)} thẻ img")
-        for img in imgs:
-            src = await img.get_attribute("src")
-            # Bỏ qua các ảnh quá nhỏ hoặc ảnh đại diện (thường có kích thước 150x150)
-            if src and "cdninstagram" in src and "150x150" not in src:
-                res.append({"type": "image", "url": src})
+        async def extract_visible_images():
+            imgs = await page.query_selector_all("img")
+            for img in imgs:
+                try:
+                    bounds = await img.bounding_box()
+                    if not bounds: continue
+                    # Main image (kể cả dọc/ngang) trên viewport 1280x720 luôn có width >= 400px.
+                    # Khung ảnh "More posts" lưới 3 cột dưới màn hình luôn tự bóp width về khoảng 310px.
+                    if bounds["width"] >= 330 and bounds["height"] >= 330:
+                        src = await img.get_attribute("src")
+                        if src and "150x150" not in src and "100x100" not in src and "profile_pic" not in src:
+                            if "cdninstagram" in src or "fbcdn" in src or "instagram" in src:
+                                if src not in collected_srcs:
+                                    res.append({"type": "image", "url": src})
+                                    collected_srcs.add(src)
+                except Exception:
+                    pass
+
+        # Quét khung hình mặc định đầu tiên
+        await extract_visible_images()
+
+        # Click nút "Next" để lazy-load và quét liên tiếp các khung hình bị ẩn
+        try:
+            next_btn = page.locator('button[aria-label="Next"], button[aria-label="Tiếp"]')
+            click_count = 0
+            while await next_btn.count() > 0 and await next_btn.first.is_visible() and click_count < 15:
+                await next_btn.first.click()
+                await asyncio.sleep(0.5)
+                # Quét lại sau mỗi lần lật sang trang mới
+                await extract_visible_images()
+                click_count += 1
+            if click_count > 0:
+                print(f"[*] Đã lật trang {click_count} lần để mở khóa toàn bộ {len(collected_srcs)} ảnh album")
+        except Exception as e:
+            pass
         
         return self._deduplicate(res)
 
