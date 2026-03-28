@@ -19,7 +19,6 @@ class MediaScraper:
             print("[*] Đang chạy trình duyệt Chromium...")
             self.browser = await self.pw.chromium.launch(
                 headless=True,
-                channel="chrome", # Try to use the real Chrome if available
                 args=[
                     "--no-sandbox", 
                     "--disable-setuid-sandbox", 
@@ -101,7 +100,12 @@ class MediaScraper:
                 }
             print("[!] API không trả về media, fallback sang browser...")
 
-        await self.init_browser()
+        try:
+            await self.init_browser()
+        except Exception as e:
+            msg = f"Lỗi khởi động trình duyệt trên Host: {str(e)}. Hãy thử chạy 'playwright install' trên server."
+            print(f"[!] {msg}")
+            return {"error": msg}
         
         # Create a new context for each request to avoid cookie bleeding
         context = await self.browser.new_context(
