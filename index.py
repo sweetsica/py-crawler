@@ -11,6 +11,19 @@ app = FastAPI()
 templates = Jinja2Templates(directory="templates")
 scraper = MediaScraper()
 
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    import traceback
+    error_trace = traceback.format_exc()
+    print(f"[!] Lỗi server: {error_trace}")
+    return JSONResponse(
+        status_code=500,
+        content={
+            "error": f"Lỗi máy chủ nội bộ: {str(exc)}",
+            "detail": error_trace
+        }
+    )
+
 @app.get("/", response_class=HTMLResponse)
 async def read_item(request: Request):
     return templates.TemplateResponse(request, "index.html", {"request": request})
