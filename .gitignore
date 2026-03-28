@@ -5,3 +5,4 @@ x.json
 .env.example
 .env.prod
 .env.dev
+__pycache__
