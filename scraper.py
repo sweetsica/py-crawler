@@ -30,9 +30,9 @@ class MediaScraper:
             print("[*] Trình duyệt đã sẵn sàng.")
 
     async def load_cookies(self, context, cookie_file):
-        # Normalize cookie path to be inside 'json' folder if not already
-        if not cookie_file.startswith("json/"):
-            cookie_file = os.path.join("json", cookie_file)
+        # Đảm bảo đường dẫn file chuẩn xác trên mọi OS (Windows/Linux)
+        filename = os.path.basename(cookie_file)
+        cookie_file = os.path.join("json", filename)
             
         print(f"[*] Đang tải cookie từ file: {cookie_file}")
         if os.path.exists(cookie_file):
@@ -62,9 +62,13 @@ class MediaScraper:
                             formatted_c["sameSite"] = "Lax"
                         formatted_cookies.append(formatted_c)
                     
-                    await context.add_cookies(formatted_cookies)
-                    print(f"[*] Đã tải {len(formatted_cookies)} cookies thành công.")
-                    return True
+                    try:
+                        await context.add_cookies(formatted_cookies)
+                        print(f"[*] Đã tải {len(formatted_cookies)} cookies thành công.")
+                        return True
+                    except Exception as cookie_err:
+                        print(f"[!] Playwright không chấp nhận định dạng cookie từ {cookie_file}: {cookie_err}")
+                        return False
             except Exception as e:
                 print(f"[!] Lỗi khi đọc file cookie {cookie_file}: {e}")
         else:
