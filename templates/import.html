@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Import Cookies - Scraper</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-hover: #4f46e5;
+            --bg: #0f172a;
+            --card-bg: #1e293b;
+            --text: #f1f5f9;
+            --text-muted: #94a3b8;
+            --success: #22c55e;
+            --error: #ef4444;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 800px;
+            background: var(--card-bg);
+            padding: 2.5rem;
+            border-radius: 1rem;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        h1 {
+            font-weight: 600;
+            text-align: center;
+            margin-bottom: 2.5rem;
+            background: linear-gradient(to right, #818cf8, #c084fc);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .import-row {
+            display: grid;
+            grid-template-columns: 120px 1fr 120px;
+            gap: 1.5rem;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 2rem;
+            border-bottom: 1px solid #334155;
+        }
+
+        .import-row:last-child {
+            border-bottom: none;
+            margin-bottom: 1rem;
+        }
+
+        .source-label {
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            letter-spacing: 0.05em;
+        }
+
+        textarea {
+            width: 100%;
+            height: 45px;
+            padding: 0.75rem 1rem;
+            border-radius: 0.5rem;
+            border: 1px solid #334155;
+            background: #0f172a;
+            color: white;
+            box-sizing: border-box;
+            transition: all 0.2s;
+            resize: none;
+            font-family: monospace;
+            font-size: 0.85rem;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            height: 120px;
+        }
+
+        .btn-load {
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            border: none;
+            background: var(--primary);
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .btn-load:hover {
+            background: var(--primary-hover);
+            transform: translateY(-1px);
+        }
+
+        .btn-load:active {
+            transform: translateY(0);
+        }
+
+        .btn-load.success {
+            background: var(--success);
+            cursor: default;
+        }
+
+        .status-msg {
+            font-size: 0.85rem;
+            margin-top: 0.5rem;
+            text-align: center;
+            display: none;
+        }
+
+        .status-msg.error {
+            color: var(--error);
+            display: block;
+        }
+
+        .back-link {
+            display: block;
+            text-align: center;
+            margin-top: 1rem;
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: color 0.2s;
+        }
+
+        .back-link:hover {
+            color: var(--primary);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Nạp Cookies</h1>
+        
+        <!-- X / Twitter -->
+        <div class="import-row">
+            <div class="source-label">Twitter / X</div>
+            <textarea id="temp_x" placeholder="Dán JSON cookie của X vào đây..."></textarea>
+            <button class="btn-load" onclick="loadCookie('x')">Load</button>
+        </div>
+        <div id="status_x" class="status-msg"></div>
+
+        <!-- Instagram -->
+        <div class="import-row">
+            <div class="source-label">Instagram</div>
+            <textarea id="temp_insta" placeholder="Dán JSON cookie của Instagram vào đây..."></textarea>
+            <button class="btn-load" onclick="loadCookie('insta')">Load</button>
+        </div>
+        <div id="status_insta" class="status-msg"></div>
+
+        <!-- Facebook -->
+        <div class="import-row">
+            <div class="source-label">Facebook</div>
+            <textarea id="temp_fb" placeholder="Dán JSON cookie của Facebook vào đây..."></textarea>
+            <button class="btn-load" onclick="loadCookie('fb')">Load</button>
+        </div>
+        <div id="status_fb" class="status-msg"></div>
+
+        <a href="/" class="back-link">&larr; Quay lại trang chủ</a>
+    </div>
+
+    <script>
+        async function loadCookie(source) {
+            const textarea = document.getElementById(`temp_${source}`);
+            const btn = textarea.nextElementSibling;
+            const statusDiv = document.getElementById(`status_${source}`);
+            const content = textarea.value.trim();
+
+            if (!content) {
+                alert('Vui lòng dán nội dung JSON!');
+                return;
+            }
+
+            try {
+                // Pre-validate JSON on client side
+                JSON.parse(content);
+            } catch (e) {
+                statusDiv.innerText = 'Dữ liệu không phải JSON hợp lệ!';
+                statusDiv.className = 'status-msg error';
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerText = 'Đang nạp...';
+            statusDiv.style.display = 'none';
+
+            try {
+                const formData = new FormData();
+                formData.append('source', source);
+                formData.append('content', content);
+
+                const response = await fetch('/import', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    textarea.value = ''; // Clear token
+                    btn.innerText = 'Đã nạp';
+                    btn.classList.add('success');
+                    statusDiv.style.display = 'none';
+                    
+                    // Reset button after 3 seconds if they want to load again
+                    setTimeout(() => {
+                        btn.disabled = false;
+                        btn.innerText = 'Load';
+                        btn.classList.remove('success');
+                    }, 3000);
+                } else {
+                    throw new Error(result.error || 'Lỗi không xác định');
+                }
+            } catch (err) {
+                btn.disabled = false;
+                btn.innerText = 'Thử lại';
+                statusDiv.innerText = err.message;
+                statusDiv.className = 'status-msg error';
+                statusDiv.style.display = 'block';
+            }
+        }
+    </script>
+</body>
+</html>

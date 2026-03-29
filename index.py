@@ -11,6 +11,40 @@ app = FastAPI()
 templates = Jinja2Templates(directory="templates")
 scraper = MediaScraper()
 
+# Đảm bảo thư mục lưu trữ cookie tồn tại
+if not os.path.exists("json"):
+    os.makedirs("json")
+
+@app.get("/import", response_class=HTMLResponse)
+async def import_page(request: Request):
+    return templates.TemplateResponse(request, "import.html", {"request": request})
+
+@app.post("/import")
+async def import_cookie(source: str = Form(...), content: str = Form(...)):
+    """Lưu cookie JSON vào file tưng ứng: x.json, insta.json, fb.json"""
+    valid_sources = {
+        "x": "x.json",
+        "insta": "insta.json",
+        "fb": "fb.json"
+    }
+    
+    if source not in valid_sources:
+        return JSONResponse(content={"error": "Nguồn không hợp lệ"}, status_code=400)
+    
+    try:
+        # Kiểm tra xem có đúng định dạng JSON không
+        cookie_data = json.loads(content)
+        
+        file_path = os.path.join("json", valid_sources[source])
+        with open(file_path, "w", encoding="utf-8") as f:
+            json.dump(cookie_data, f, indent=4, ensure_ascii=False)
+            
+        return JSONResponse(content={"status": "success", "message": "Đã nạp"})
+    except json.JSONDecodeError:
+        return JSONResponse(content={"error": "Dữ liệu không phải JSON hợp lệ"}, status_code=400)
+    except Exception as e:
+        return JSONResponse(content={"error": f"Lỗi: {str(e)}"}, status_code=500)
+
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     import traceback
