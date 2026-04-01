@@ -347,26 +347,55 @@ class MediaScraper:
             rating_section = await page.query_selector("div.product-detail.page-product__detail + div")
             if rating_section:
                 print("[*] Đã tìm thấy khu vực ĐÁNH GIÁ SẢN PHẨM")
-                imgs = await rating_section.query_selector_all("img")
-                vids = await rating_section.query_selector_all("video")
+                for page_num in range(1, 6): # Lấy tối đa 5 trang đánh giá
+                    print(f"[*] Đang lấy dữ liệu trang {page_num}...")
+                    imgs = await page.query_selector_all("div.product-detail.page-product__detail + div img")
+                    vids = await page.query_selector_all("div.product-detail.page-product__detail + div video")
+
+                    print(f"    - Tìm thấy {len(imgs)} thẻ img trong khu vực")
+                    for img in imgs:
+                        src = await img.get_attribute("src")
+                        if src and ("susercontent" in src or "shopee" in src):
+                            if "avatar" not in src and "profile" not in src:
+                                res.append({"type": "image", "url": src})
+                                
+                    print(f"    - Tìm thấy {len(vids)} thẻ video trong khu vực")
+                    for v in vids:
+                        src = await v.get_attribute("src")
+                        if src and src.startswith("http"):
+                            res.append({"type": "video", "url": src})
+                            
+                    # Thử tìm và click nút Next
+                    next_btn = await page.query_selector(".shopee-page-controller button.shopee-icon-button--right")
+                    if next_btn:
+                        is_disabled = await next_btn.get_attribute("disabled")
+                        if is_disabled is not None:
+                            print("[*] Đã đến trang đánh giá cuối cùng.")
+                            break
+                        else:
+                            print(f"[*] Chuyển sang trang {page_num + 1}...")
+                            await next_btn.click()
+                            await asyncio.sleep(2) # Chờ Shopee tải trang mới
+                    else:
+                        print("[*] Không tìm thấy nút chuyển trang.")
+                        break
             else:
                 print("[!] Không tìm thấy khu vực ĐÁNH GIÁ SẢN PHẨM, fallback tìm toàn trang")
                 imgs = await page.query_selector_all("img")
                 vids = await page.query_selector_all("video")
-
-            print(f"[*] Tìm thấy {len(imgs)} thẻ img trong khu vực")
-            for img in imgs:
-                src = await img.get_attribute("src")
-                if src and ("susercontent" in src or "shopee" in src):
-                    if "avatar" not in src and "profile" not in src:
-                        res.append({"type": "image", "url": src})
+                print(f"[*] Tìm thấy {len(imgs)} thẻ img trên toàn trang")
+                for img in imgs:
+                    src = await img.get_attribute("src")
+                    if src and ("susercontent" in src or "shopee" in src):
+                        if "avatar" not in src and "profile" not in src:
+                            res.append({"type": "image", "url": src})
+                            
+                print(f"[*] Tìm thấy {len(vids)} thẻ video trên toàn trang")
+                for v in vids:
+                    src = await v.get_attribute("src")
+                    if src and src.startswith("http"):
+                        res.append({"type": "video", "url": src})
                         
-            print(f"[*] Tìm thấy {len(vids)} thẻ video trong khu vực")
-            for v in vids:
-                src = await v.get_attribute("src")
-                if src and src.startswith("http"):
-                    res.append({"type": "video", "url": src})
-                    
         except Exception as e:
             print(f"[!] Lỗi khi cuộn/cào DOM Shopee: {e}")
             
