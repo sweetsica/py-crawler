@@ -75,15 +75,19 @@ class MediaScraper:
         return False
 
     def get_platform(self, url):
-        if "facebook.com" in url or "fb.com" in url or "fb.watch" in url:
+        if not url:
+            return None, None
+            
+        url_lower = url.lower().strip()
+        if "facebook.com" in url_lower or "fb.com" in url_lower or "fb.watch" in url_lower:
             return "facebook", "json/fb.json"
-        elif "instagram.com" in url:
+        elif "instagram.com" in url_lower:
             return "instagram", "json/insta.json"
-        elif "twitter.com" in url or "x.com" in url:
+        elif "twitter.com" in url_lower or "x.com" in url_lower:
             return "twitter", "json/x.json"
-        elif "threads.net" in url or "threads.com" in url:
+        elif "threads.net" in url_lower or "threads.com" in url_lower:
             return "threads", "json/threads.json"
-        elif "shopee.vn" in url:
+        elif "shopee" in url_lower:
             return "shopee", "json/sp.json"
         return None, None
 
