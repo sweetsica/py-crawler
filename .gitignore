@@ -6,3 +6,4 @@ x.json
 .env.prod
 .env.dev
 __pycache__
+dump.html
