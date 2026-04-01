@@ -18,7 +18,7 @@ class MediaScraper:
             self.pw = await async_playwright().start()
             print("[*] Đang chạy trình duyệt Chromium...")
             self.browser = await self.pw.chromium.launch(
-                headless=False,
+                headless=True,
                 args=[
                     "--no-sandbox", 
                     "--disable-setuid-sandbox", 
