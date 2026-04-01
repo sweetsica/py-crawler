@@ -25,7 +25,9 @@ async def import_cookie(source: str = Form(...), content: str = Form(...)):
     valid_sources = {
         "x": "x.json",
         "insta": "insta.json",
-        "fb": "fb.json"
+        "fb": "fb.json",
+        "threads": "threads.json",
+        "shopee": "sp.json"
     }
     
     if source not in valid_sources:
@@ -93,6 +95,12 @@ async def proxy_media(url: str, request: Request):
     elif "cdninstagram" in url:
         upstream_headers["Referer"] = "https://www.instagram.com/"
         cookie_file = os.path.join("json", "insta.json")
+    elif "threads.net" in url or "threads.com" in url:
+        upstream_headers["Referer"] = "https://www.threads.net/"
+        cookie_file = os.path.join("json", "threads.json")
+    elif "shopee" in url or "susercontent.com" in url or "cv.shopee.vn" in url:
+        upstream_headers["Referer"] = "https://shopee.vn/"
+        cookie_file = os.path.join("json", "sp.json")
     else:
         upstream_headers["Referer"] = url
         cookie_file = None

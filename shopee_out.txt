@@ -1,0 +1,2 @@
+Loading https://shopee.vn/shop/1717755486/item/52504882633/rating
+Did not intercept get_ratings API.
