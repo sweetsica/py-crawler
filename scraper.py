@@ -81,6 +81,10 @@ class MediaScraper:
             return "instagram", "json/insta.json"
         elif "twitter.com" in url or "x.com" in url:
             return "twitter", "json/x.json"
+        elif "threads.net" in url or "threads.com" in url:
+            return "threads", "json/threads.json"
+        elif "shopee.vn" in url:
+            return "shopee", "json/sp.json"
         return None, None
 
     async def scrape(self, url):
@@ -108,9 +112,12 @@ class MediaScraper:
             return {"error": msg}
         
         # Create a new context for each request to avoid cookie bleeding
+        is_mobile = False
         context = await self.browser.new_context(
             user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-            viewport={"width": 1280, "height": 720}
+            viewport={"width": 1280, "height": 720},
+            is_mobile=is_mobile,
+            has_touch=is_mobile
         )
         
         await self.load_cookies(context, cookie_file)
@@ -143,7 +150,7 @@ class MediaScraper:
                      network_media.append({"type": "video", "url": req_url})
             elif any(ext in req_url.lower() for ext in [".jpg", ".jpeg", ".png", ".webp"]):
                  # Không lấy ảnh từ network đối với Instagram để tránh rác (icon, tracking pixels, avatar)
-                 if platform == "instagram":
+                 if platform in ["instagram", "threads"]:
                      pass
                  elif "twimg.com/media" in req_url or "pbs.twimg.com" in req_url or "fbcdn" in req_url:
                        if "/profile_images/" not in req_url:
@@ -151,13 +158,17 @@ class MediaScraper:
 
         page.on("request", handle_request)
 
+        if platform == "shopee":
+            # Khởi chạy ở chế độ Desktop, không cưỡng ép lấy link /rating của mobile.
+            print(f"[*] Shopee detected. Dùng nguyên URL PC để cào: {url}")
+
         try:
             print(f"[*] Đang truy cập URL: {url}")
             await page.goto(url, wait_until="domcontentloaded", timeout=90000)
             print("[*] Đã nhận dữ liệu sơ bộ, đang chờ trang render thêm...")
             
             # Instagram chỉ cần 4s là đủ lấy mạng cho main video. Đợi lâu nó tải luôn video gợi ý rác.
-            if platform == "instagram":
+            if platform in ["instagram", "threads"]:
                 await asyncio.sleep(4)
             else:
                 await asyncio.sleep(15)
@@ -174,6 +185,10 @@ class MediaScraper:
                 media_list = await self._scrape_instagram(page)
             elif platform == "twitter":
                 media_list = await self._scrape_twitter(page)
+            elif platform == "threads":
+                media_list = await self._scrape_threads(page)
+            elif platform == "shopee":
+                media_list = await self._scrape_shopee(page)
 
             # Gộp network media (chỉ cho FB/IG, Twitter đã dùng API)
             if platform != "twitter":
@@ -279,6 +294,82 @@ class MediaScraper:
         except Exception as e:
             pass
         
+        return self._deduplicate(res)
+
+    async def _scrape_threads(self, page):
+        res = []
+        print("[*] Đang cào Threads...")
+        videos = await page.query_selector_all("video")
+        print(f"[*] Tìm thấy {len(videos)} thẻ video")
+        for v in videos:
+            src = await v.get_attribute("src")
+            if src:
+                res.append({"type": "video", "url": src})
+
+        imgs = await page.query_selector_all("img")
+        print(f"[*] Tìm thấy {len(imgs)} thẻ img")
+        for img in imgs:
+            try:
+                bounds = await img.bounding_box()
+                if not bounds: continue
+                
+                # Check if it's a main image (Threads posts are usually large)
+                if bounds["width"] >= 200 and bounds["height"] >= 200:
+                    src = await img.get_attribute("src")
+                    if src and "profile_pic" not in src:
+                        if "cdninstagram" in src or "fbcdn" in src or "threads" in src:
+                            res.append({"type": "image", "url": src})
+            except Exception:
+                pass
+                
+        return self._deduplicate(res)
+
+    async def _scrape_shopee(self, page):
+        res = []
+        print("[*] Đang cào Shopee Rating (PC Version)...")
+        
+        # Xử lý popup chọn ngôn ngữ nếu có
+        try:
+            lang_btn = page.locator('button:has-text("Tiếng Việt"), div:has-text("Tiếng Việt"), span:has-text("Tiếng Việt")').first
+            if await lang_btn.is_visible(timeout=3000):
+                print("[*] Phát hiện popup chọn ngôn ngữ, đang tự động click 'Tiếng Việt'...")
+                await lang_btn.click()
+                await asyncio.sleep(2)
+        except Exception:
+            pass
+            
+        # Shopee lazy loads rating, scroll down a bit
+        try:
+            for i in range(12):
+                await page.evaluate("window.scrollBy(0, 1000)")
+                await asyncio.sleep(1)
+                
+            rating_section = await page.query_selector("div.product-detail.page-product__detail + div")
+            if rating_section:
+                print("[*] Đã tìm thấy khu vực ĐÁNH GIÁ SẢN PHẨM")
+                imgs = await rating_section.query_selector_all("img")
+                vids = await rating_section.query_selector_all("video")
+            else:
+                print("[!] Không tìm thấy khu vực ĐÁNH GIÁ SẢN PHẨM, fallback tìm toàn trang")
+                imgs = await page.query_selector_all("img")
+                vids = await page.query_selector_all("video")
+
+            print(f"[*] Tìm thấy {len(imgs)} thẻ img trong khu vực")
+            for img in imgs:
+                src = await img.get_attribute("src")
+                if src and ("susercontent" in src or "shopee" in src):
+                    if "avatar" not in src and "profile" not in src:
+                        res.append({"type": "image", "url": src})
+                        
+            print(f"[*] Tìm thấy {len(vids)} thẻ video trong khu vực")
+            for v in vids:
+                src = await v.get_attribute("src")
+                if src and src.startswith("http"):
+                    res.append({"type": "video", "url": src})
+                    
+        except Exception as e:
+            print(f"[!] Lỗi khi cuộn/cào DOM Shopee: {e}")
+            
         return self._deduplicate(res)
 
     def _get_tweet_id(self, url):
@@ -605,7 +696,7 @@ class MediaScraper:
         final_unique = []
         ig_video_count = 0
         for item in unique:
-            if platform == "instagram" and item.get("type") == "video":
+            if platform in ["instagram", "threads"] and item.get("type") == "video":
                 if ig_video_count >= 1:
                     continue
                 ig_video_count += 1

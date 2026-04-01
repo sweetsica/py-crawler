@@ -1,0 +1,5 @@
+# Project Notes & Rules
+
+1. **Sau khi chạy test server (`python index.py`), LUÔN LUÔN NHỚ ĐÓNG PORT (tắt process server).**
+   - Đừng để server / port treo background nếu không còn dùng đến.
+   - Dùng tool `send_command_input` với cờ `Terminate: true` để dọn dẹp tiến trình.
