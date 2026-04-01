@@ -1,7 +1,7 @@
 [
     {
         "domain": ".threads.com",
-        "expirationDate": 1809428104.164412,
+        "expirationDate": 1809583961.819039,
         "hostOnly": false,
         "httpOnly": false,
         "name": "csrftoken",
@@ -35,7 +35,7 @@
         "secure": true,
         "session": true,
         "storeId": null,
-        "value": "\"HIL\\05466752431726\\0541806404104:01fef3c527c9d0b3269fa2b9b643a35a720191c25c4b51678dbca087ccaacbd1ca1ec668\""
+        "value": "\"HIL\\05466752431726\\0541806559962:01fe5c4489cfe60345a2ae2650cdcf7c0317dc97978fe27120d9a58ad59781ef301b53d9\""
     },
     {
         "domain": ".threads.com",
@@ -52,7 +52,7 @@
     },
     {
         "domain": ".threads.com",
-        "expirationDate": 1782644104.164661,
+        "expirationDate": 1782799961.819301,
         "hostOnly": false,
         "httpOnly": false,
         "name": "ds_user_id",
@@ -91,15 +91,15 @@
     },
     {
         "domain": ".threads.com",
-        "expirationDate": 1806404057.39263,
+        "expirationDate": 1806559929.157216,
         "hostOnly": false,
         "httpOnly": true,
         "name": "sessionid",
         "path": "/",
-        "sameSite": "no_restriction",
+        "sameSite": null,
         "secure": true,
         "session": false,
         "storeId": null,
-        "value": "66752431726%3AAPXfIPTAS0tpB2%3A22%3AAYiuUY_3AcfdzlH_LtSa5Z_PfVbjq2zIDY-kF_LLXg"
+        "value": "66752431726%3AAPXfIPTAS0tpB2%3A22%3AAYjk3fDk5WvLMeJZ-qnyF64kZCU3H2RbEH5vpRxptg"
     }
 ]

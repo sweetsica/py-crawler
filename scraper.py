@@ -292,72 +292,82 @@ class MediaScraper:
                 # Quét lại sau mỗi lần lật sang trang mới
                 await extract_visible_images()
                 click_count += 1
-            if click_count > 0:
-                print(f"[*] Đã lật trang {click_count} lần để mở khóa toàn bộ {len(collected_srcs)} ảnh album")
-        except Exception as e:
+        except Exception:
             pass
-        
+
         return self._deduplicate(res)
 
     async def _scrape_threads(self, page):
         res = []
         print("[*] Đang cào Threads...")
         
-        # Tìm toạ độ Y của bài viết (Target Post) để không lấy nhầm ảnh/video từ Comments
-        import re
-        post_id = None
-        match = re.search(r'/post/([^/?]+)', page.url)
-        if match:
-            post_id = match.group(1)
-
-        target_y = -1
-        if post_id:
-            links = await page.query_selector_all(f'a[href*="{post_id}"]')
-            for link in links:
-                try:
-                    bounds = await link.bounding_box()
-                    if bounds and bounds["y"] > 0:
-                        target_y = bounds["y"]
-                        print(f"[*] Tìm thấy toạ độ bài viết gốc: Y={target_y}")
-                        break
-                except:
-                    pass
+        # --- Step 1: Đóng mọi popup (Login, Consent, Cookie) ---
+        try:
+            popup_selectors = [
+                'button:has-text("Close")', 
+                'button:has-text("Đóng")', 
+                'div[role="dialog"] button',
+                'div[aria-label="Close"]',
+                'div[aria-label="Đóng"]'
+            ]
+            for selector in popup_selectors:
+                btn = page.locator(selector).first
+                if await btn.is_visible(timeout=1000):
+                    await btn.click()
+                    print(f"[*] Đã đóng popup: {selector}")
+                    await asyncio.sleep(1)
+        except Exception:
+            pass
         
-        videos = await page.query_selector_all("video")
-        print(f"[*] Tìm thấy {len(videos)} thẻ video trên toàn trang")
+        # --- Step 2: Tìm Post Container mục tiêu (threads_post_page_0) ---
+        post_container = None
+        try:
+            # Chờ phần tử này xuất hiện (Thường là div[data-pagelet="threads_post_page_0"])
+            print("[*] Đang tìm container bài viết chính...")
+            selector = 'div[data-pagelet="threads_post_page_0"], #threads_post_page_0'
+            await page.wait_for_selector(selector, timeout=7000)
+            post_container = await page.query_selector(selector)
+            if post_container:
+                # Scroll tới để chắc chắn nó render nội dung (với carousel)
+                await post_container.scroll_into_view_if_needed()
+                await asyncio.sleep(1)
+        except Exception:
+            print("[!] Không tìm thấy post-pagelet, thử article đầu tiên...")
+            post_container = await page.query_selector('article')
+        
+        if not post_container:
+            print("[!] Không tìm thấy bài viết chính, cào toàn trang (có thể lẫn comment).")
+            videos = await page.query_selector_all('video')
+            imgs = await page.query_selector_all('img')
+        else:
+            # CHỈ lấy video và img NẰM TRONG container bài viết chính
+            videos = await post_container.query_selector_all('video')
+            imgs = await post_container.query_selector_all('img')
+        
+        print(f"[*] Đang xử lý {len(videos)} video và {len(imgs)} ảnh từ vùng bài viết...")
+        
         for v in videos:
             try:
-                bounds = await v.bounding_box()
-                if bounds and target_y > 0 and (bounds["y"] < target_y - 300 or bounds["y"] > target_y + 850):
-                    print(f"    - Bỏ qua video ngoài vùng mục tiêu (Y={bounds['y']})")
-                    continue
-                    
-                src = await v.get_attribute("src")
+                src = await v.get_attribute('src')
                 if src:
                     res.append({"type": "video", "url": src})
             except Exception:
                 pass
-
-        imgs = await page.query_selector_all("img")
-        print(f"[*] Tìm thấy {len(imgs)} thẻ img trên toàn trang")
+        
         for img in imgs:
             try:
                 bounds = await img.bounding_box()
-                if not bounds: continue
-                
-                # Bỏ qua hình ảnh từ comment (toạ độ quá xa so với thẻ post chính)
-                if target_y > 0 and (bounds["y"] < target_y - 300 or bounds["y"] > target_y + 850):
+                if not bounds:
                     continue
-                    
-                # Check if it's a main image (Threads posts are usually large)
-                if bounds["width"] >= 200 and bounds["height"] >= 200:
-                    src = await img.get_attribute("src")
+                # Carousel images có thể nhỏ hơn 200px nếu chia 3 cột, nên hạ xuống 150px
+                if bounds["width"] >= 150 and bounds["height"] >= 150:
+                    src = await img.get_attribute('src')
                     if src and "profile_pic" not in src:
                         if "cdninstagram" in src or "fbcdn" in src or "threads" in src:
                             res.append({"type": "image", "url": src})
             except Exception:
                 pass
-                
+        
         return self._deduplicate(res)
 
     async def _scrape_shopee(self, page):
