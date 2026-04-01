@@ -198,9 +198,13 @@ class MediaScraper:
             if platform != "twitter":
                 # Kiểm tra xem TRÊN TRANG (DOM) có thực sự chứa thẻ <video> không
                 # Reel thường có thẻ video nhưng src có thể bị ẩn hoặc là blob: lúc cào bước 1
-                if platform in ["threads", "instagram"]:
+                if platform == "threads":
+                    # Threads: Cực kỳ gắt gao vì bài đăng có comment chứa media rất to, 
+                    # phải tin vào việc check toạ độ Y ở bước _scrape_threads.
                     has_dom_video = any(m.get("type") == "video" for m in media_list)
                 else:
+                    # FB/IG: Chỉ cần có thẻ video xuất hiện trên trang là cho phép lấy từ network.
+                    # IG Reel thường có src là blob: nên không lọt vào media_list ban đầu.
                     has_dom_video = await page.locator("video").count() > 0
                 
                 filtered_network_media = []
