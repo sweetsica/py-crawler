@@ -18,7 +18,7 @@ class MediaScraper:
             self.pw = await async_playwright().start()
             print("[*] Đang chạy trình duyệt Chromium...")
             self.browser = await self.pw.chromium.launch(
-                headless=True,
+                headless=False,
                 args=[
                     "--no-sandbox", 
                     "--disable-setuid-sandbox", 
@@ -194,7 +194,10 @@ class MediaScraper:
             if platform != "twitter":
                 # Kiểm tra xem TRÊN TRANG (DOM) có thực sự chứa thẻ <video> không
                 # Reel thường có thẻ video nhưng src có thể bị ẩn hoặc là blob: lúc cào bước 1
-                has_dom_video = await page.locator("video").count() > 0
+                if platform in ["threads", "instagram"]:
+                    has_dom_video = any(m.get("type") == "video" for m in media_list)
+                else:
+                    has_dom_video = await page.locator("video").count() > 0
                 
                 filtered_network_media = []
                 for net_item in network_media:
@@ -299,20 +302,53 @@ class MediaScraper:
     async def _scrape_threads(self, page):
         res = []
         print("[*] Đang cào Threads...")
+        
+        # Tìm toạ độ Y của bài viết (Target Post) để không lấy nhầm ảnh/video từ Comments
+        import re
+        post_id = None
+        match = re.search(r'/post/([^/?]+)', page.url)
+        if match:
+            post_id = match.group(1)
+
+        target_y = -1
+        if post_id:
+            links = await page.query_selector_all(f'a[href*="{post_id}"]')
+            for link in links:
+                try:
+                    bounds = await link.bounding_box()
+                    if bounds and bounds["y"] > 0:
+                        target_y = bounds["y"]
+                        print(f"[*] Tìm thấy toạ độ bài viết gốc: Y={target_y}")
+                        break
+                except:
+                    pass
+        
         videos = await page.query_selector_all("video")
-        print(f"[*] Tìm thấy {len(videos)} thẻ video")
+        print(f"[*] Tìm thấy {len(videos)} thẻ video trên toàn trang")
         for v in videos:
-            src = await v.get_attribute("src")
-            if src:
-                res.append({"type": "video", "url": src})
+            try:
+                bounds = await v.bounding_box()
+                if bounds and target_y > 0 and (bounds["y"] < target_y - 300 or bounds["y"] > target_y + 850):
+                    print(f"    - Bỏ qua video ngoài vùng mục tiêu (Y={bounds['y']})")
+                    continue
+                    
+                src = await v.get_attribute("src")
+                if src:
+                    res.append({"type": "video", "url": src})
+            except Exception:
+                pass
 
         imgs = await page.query_selector_all("img")
-        print(f"[*] Tìm thấy {len(imgs)} thẻ img")
+        print(f"[*] Tìm thấy {len(imgs)} thẻ img trên toàn trang")
         for img in imgs:
             try:
                 bounds = await img.bounding_box()
                 if not bounds: continue
                 
+                # Bỏ qua hình ảnh từ comment (toạ độ quá xa so với thẻ post chính)
+                if target_y > 0 and (bounds["y"] < target_y - 300 or bounds["y"] > target_y + 850):
+                    continue
+                    
                 # Check if it's a main image (Threads posts are usually large)
                 if bounds["width"] >= 200 and bounds["height"] >= 200:
                     src = await img.get_attribute("src")
