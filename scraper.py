@@ -153,12 +153,13 @@ class MediaScraper:
                  if not is_audio:
                      network_media.append({"type": "video", "url": req_url})
             elif any(ext in req_url.lower() for ext in [".jpg", ".jpeg", ".png", ".webp"]):
-                 # Không lấy ảnh từ network đối với Instagram để tránh rác (icon, tracking pixels, avatar)
-                 if platform in ["instagram", "threads"]:
+                 # Không lấy ảnh từ network đối với Facebook, Instagram, Threads để tránh rác (icon, tracking pixels, avatar)
+                 if platform in ["facebook", "instagram", "threads"]:
                      pass
-                 elif "twimg.com/media" in req_url or "pbs.twimg.com" in req_url or "fbcdn" in req_url:
-                       if "/profile_images/" not in req_url:
-                            network_media.append({"type": "image", "url": req_url})
+                 elif "twimg.com/media" in req_url or "pbs.twimg.com" in req_url:
+                       if "/profile_images/" not in req_url and "/rsrc.php/" not in req_url and "emoji" not in req_url:
+                            if not any(x in req_url for x in ["16x16", "s24x24", "s32x32", "s34x34", "s40x40", "s50x50", "s72x72", "s75x75", "s100x100", "s160x160", "s240x240", "s280x280", "p280x280"]):
+                                network_media.append({"type": "image", "url": req_url})
 
         page.on("request", handle_request)
 
@@ -247,10 +248,18 @@ class MediaScraper:
         imgs = await page.query_selector_all("img")
         print(f"[*] Tìm thấy {len(imgs)} thẻ img")
         for img in imgs:
-            src = await img.get_attribute("src")
-            # Filter out small icons or profile pics
-            if src and src.startswith("http") and "emoji" not in src and "fbcdn" in src:
-                res.append({"type": "image", "url": src})
+            try:
+                bounds = await img.bounding_box()
+                if not bounds: continue
+                # Filter out small icons or profile pics by dimensions
+                if bounds["width"] >= 150 and bounds["height"] >= 150:
+                    src = await img.get_attribute("src")
+                    if src and src.startswith("http") and "emoji" not in src and "fbcdn" in src:
+                        # Drop tiny static assets from facebook
+                        if "/rsrc.php/" not in src and "s40x40" not in src and "s100x100" not in src and "s160x160" not in src:
+                            res.append({"type": "image", "url": src})
+            except Exception:
+                pass
         
         return self._deduplicate(res)
 
