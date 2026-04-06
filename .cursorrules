@@ -3,3 +3,7 @@
 1. **Sau khi chạy test server (`python index.py`), LUÔN LUÔN NHỚ ĐÓNG PORT (tắt process server).**
    - Đừng để server / port treo background nếu không còn dùng đến.
    - Dùng tool `send_command_input` với cờ `Terminate: true` để dọn dẹp tiến trình.
+2. **Luôn ghi chép lại mọi thay đổi vào nhật ký:**
+   - Mọi hoạt động cập nhật, sửa lỗi (bug fixes), cấu trúc mới PHẢI ĐƯỢC GHI VÀO file `PROJECT_STATUS.md` dưới định dạng Markdown để lưu giữ ngữ cảnh.
+3. **Dọn dẹp tự động (BẮT BUỘC):**
+   - **Mọi file test, script kiểm thử, file tạm thời, log, ảnh debug sau khi sinh ra dùng để test xong PHẢI TỰ ĐỘNG XÓA ĐI NGAY LẬP TỨC.** Tuyệt đối không cần đợi người dùng nhắc nhở, dự án phải luôn trong trạng thái không có rác.

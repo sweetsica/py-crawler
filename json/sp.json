@@ -1,7 +1,7 @@
 [
     {
         "domain": ".shopee.vn",
-        "expirationDate": 1806559465,
+        "expirationDate": 1806956770,
         "hostOnly": false,
         "httpOnly": false,
         "name": "_hjSessionUser_868286",
@@ -14,7 +14,7 @@
     },
     {
         "domain": ".shopee.vn",
-        "expirationDate": 1809583465.161323,
+        "expirationDate": 1809980771.052789,
         "hostOnly": false,
         "httpOnly": true,
         "name": "SPC_T_ID",
@@ -40,7 +40,7 @@
     },
     {
         "domain": ".shopee.vn",
-        "expirationDate": 1809583465.161248,
+        "expirationDate": 1809980771.052647,
         "hostOnly": false,
         "httpOnly": false,
         "name": "SPC_R_T_ID",
@@ -53,7 +53,7 @@
     },
     {
         "domain": ".shopee.vn",
-        "expirationDate": 1775025265,
+        "expirationDate": 1775421941,
         "hostOnly": false,
         "httpOnly": false,
         "name": "_hjSession_868286",
@@ -62,11 +62,11 @@
         "secure": true,
         "session": false,
         "storeId": null,
-        "value": "eyJpZCI6ImYxMTRmYTkwLTI2N2ItNGYxNy1hZWFkLTRkYzAxZTBiODk0OSIsImMiOjE3NzUwMjM0NjUyMDUsInMiOjAsInIiOjAsInNiIjowLCJzciI6MCwic2UiOjAsImZzIjowLCJzcCI6MX0="
+        "value": "eyJpZCI6IjcxOGZlMWJiLTA5OTUtNDdhNC1iMDQ4LWUwMzcwOWE4NTViNyIsImMiOjE3NzU0MTkxMDI4NzEsInMiOjAsInIiOjAsInNiIjowLCJzciI6MCwic2UiOjAsImZzIjowLCJzcCI6MH0="
     },
     {
         "domain": ".shopee.vn",
-        "expirationDate": 1775109865.161104,
+        "expirationDate": 1775507171.052863,
         "hostOnly": false,
         "httpOnly": true,
         "name": "SPC_SI",
@@ -75,7 +75,7 @@
         "secure": true,
         "session": false,
         "storeId": null,
-        "value": "JMm3aQAAAABsOFZXTndIavKAiwEAAAAAaFQxQ3J3eDM="
+        "value": "RTjOaQAAAABLYldRMVNOOUk5NwAAAAAANVNiSTk3d3M="
     },
     {
         "domain": ".shopee.vn",
@@ -88,19 +88,6 @@
         "session": true,
         "storeId": null,
         "value": "dd73c80f-885e-4661-81cf-75e2e2ab007c"
-    },
-    {
-        "domain": ".shopee.vn",
-        "expirationDate": 1775030662.22822,
-        "hostOnly": false,
-        "httpOnly": false,
-        "name": "AC_CERT_D",
-        "path": "/",
-        "sameSite": null,
-        "secure": true,
-        "session": false,
-        "storeId": null,
-        "value": "gqRjZGVrxHeFomtpuDE0MjUxOmNhcHRjaGFfY29va2llX2tleaJrdtEAAaRhbGdv0gAAAGSjZGVrwKJjdMRAAAAADDGusmV7JUoOV8t9bz/L65eV/zV+jsOdjgKRCV/xH8bExylBgtYoYBFM/TlF5znVZrzmoWDNGRCXJmA51KpjaXBoZXJ0ZXh0xQNbAAAADHkSBOrUW0M0w97GvE1bODLmSy85VOlO0a1fOduPqVDioc4nK1bodcIpt6mzHCppkiSatMKVszh2/8DZKyCZLj9JIhARbztk6LCSugOJuNThMAE2YQKZ/ruQui1b3BxPNJnTeN6TpXB+vYiFSdLW0FuJE+dwQAMOopFbxZZR7Sh7P8e+PkMO7QQTtrBjntdwfDXEdEXBZdaSyc3jCLvKL6yidRZAm3TI7fa5ZXU/U0QCd3BdewGWFjpJgkhMBDs3TgHSPF0IM81mGTB0KRueM/310hjW8Px2lmRCed+tOQe2oFQef50/D1FTMTHCdHLe0cM+f6E6M48oBaZ1MYngEBfTTvfPofvRo84og65E9eb3StJDSz8m81Skk+rG3yOzvC2HsvUdHMpkH0LOokgRapzvezIJVoQQ8QfJBvUKp1tKI7GMJ/sidGg6Drxpr0Rufd9XZRtf2+zf7SpBpbLCG+9GUkRkUl/HtcYwroIdisO5nA7KggepISRNsm8vucdqDZMcpm2AiPwATur7jBa2VyB9W3Ard6bPn6LgMYfWNsMeP9i4x0rh0DhTY+g3ZTvaMKfQ0itpQAHBPlpoG+RX1WkJPpCVxvTPJnknpwng4Z37C5Lv4qwBZOcHvQ3smWKAo/eR8tbsvyCaHKjXyZQyDDmW6if7SdXkuu3ydXdElHkqfMi5EkoDf+TZVbBjVWBI760jHS4OaHPvP1oVqsGwjM99teAXEna7kQYgmG19vjCvHjlz16rbLddwTmY0uj7ixsDLttwMg3HNRbGwPu8HcA99tCweFevtj1Bsf40AMQWcK362CytXJ9aKt4K5wSjRhjphzRK+foSkuegeMHVKderHTZ0uVUoUNdkjk1y00KoQX/R1tsm/VmNPLqg7gqnGdJyHQ9MSJvP1bilE/5oHG6jBdTjMhF59KhVXrnEqqXCZJ4b7aTdXcZAMzN/QmceLGlWLj7GoD7LDuvld8qB55/0rtcyUyRFOto9fcZGucHFmGIyE4j2YxaCeWc91xrn0uNedK3ZLquScfK/ZTLbEpnq8exBjxPGnRgucxBiyQFWgxzYJdfLFclYXKG5vMq3GLmqNnHVaeXCOOo1rCJSjUuhFa6X9wWR1sUJgdpiHIlvFyf2q/q3zJg=="
     },
     {
         "domain": ".shopee.vn",
@@ -130,7 +117,7 @@
     },
     {
         "domain": ".shopee.vn",
-        "expirationDate": 1782799465,
+        "expirationDate": 1783196770,
         "hostOnly": false,
         "httpOnly": false,
         "name": "_fbp",
@@ -155,7 +142,7 @@
     },
     {
         "domain": "shopee.vn",
-        "expirationDate": 1806559466,
+        "expirationDate": 1806956771,
         "hostOnly": true,
         "httpOnly": false,
         "name": "ds",
@@ -164,7 +151,7 @@
         "secure": false,
         "session": false,
         "storeId": null,
-        "value": "b4b4b46bda7243b154d6c831cd9e58f7"
+        "value": "e27a7355036740e8af65255d8f0462c5"
     },
     {
         "domain": ".shopee.vn",
@@ -181,7 +168,7 @@
     },
     {
         "domain": ".shopee.vn",
-        "expirationDate": 1809583464.063952,
+        "expirationDate": 1809980769.409214,
         "hostOnly": false,
         "httpOnly": false,
         "name": "_ga",
@@ -194,7 +181,7 @@
     },
     {
         "domain": ".shopee.vn",
-        "expirationDate": 1809583464.063686,
+        "expirationDate": 1809980769.408932,
         "hostOnly": false,
         "httpOnly": false,
         "name": "_ga_4GPP1ZXG63",
@@ -203,7 +190,7 @@
         "secure": false,
         "session": false,
         "storeId": null,
-        "value": "GS2.1.s1775023456$o6$g1$t1775023464$j52$l1$h356547782"
+        "value": "GS2.1.s1775419101$o9$g1$t1775420769$j58$l1$h21345465"
     },
     {
         "domain": ".shopee.vn",
@@ -220,7 +207,7 @@
     },
     {
         "domain": ".shopee.vn",
-        "expirationDate": 1777517773,
+        "expirationDate": 1778012768,
         "hostOnly": false,
         "httpOnly": false,
         "name": "_med",
@@ -258,7 +245,7 @@
     },
     {
         "domain": "shopee.vn",
-        "expirationDate": 1806559466,
+        "expirationDate": 1806956771,
         "hostOnly": true,
         "httpOnly": false,
         "name": "REC7iLP4Q",
@@ -284,7 +271,7 @@
     },
     {
         "domain": "shopee.vn",
-        "expirationDate": 1806559466,
+        "expirationDate": 1806956771,
         "hostOnly": true,
         "httpOnly": false,
         "name": "shopee_webUnique_ccd",
@@ -293,7 +280,7 @@
         "secure": false,
         "session": false,
         "storeId": null,
-        "value": "2Gca1t4DGL%2FYmkO51%2BAW7Q%3D%3D%7CRqkGxw0kraFUfBN%2B6OoGzx4WxcP9GSUtQI8gjsGdlfL71BQHy1nhxS2IBtzwq%2FnGs0j16Y0lXR4%3D%7CfeK2ZCDWYDwmroBV%7C08%7C3"
+        "value": "ecQLb84r2nwzzjLrltuMig%3D%3D%7C9akGxw0kraFUfBN%2B6OoGzx4WxcP9GSUtQI8gjmIgYur71BQHy1nhxS2IBtzwq%2FnGs0j16Y0lXR4%3D%7CfeK2ZCDWYDwmroBV%7C08%7C3"
     },
     {
         "domain": ".shopee.vn",
@@ -322,7 +309,7 @@
     },
     {
         "domain": ".shopee.vn",
-        "expirationDate": 1809583465.161287,
+        "expirationDate": 1809980771.052751,
         "hostOnly": false,
         "httpOnly": false,
         "name": "SPC_R_T_IV",
@@ -335,7 +322,7 @@
     },
     {
         "domain": "shopee.vn",
-        "expirationDate": 1775110155.294783,
+        "expirationDate": 1775486762.635871,
         "hostOnly": true,
         "httpOnly": true,
         "name": "SPC_SEC_SI",
@@ -344,7 +331,7 @@
         "secure": true,
         "session": false,
         "storeId": null,
-        "value": "v1-bU9wNmJreHhZajZobUM0Z9HvUA/6EVsOgak+/Bv51pxo9Z3+g072wBFVzcGX1W916AGYn5dlvE6+29OO2DqJlsZHl3hGtXpsX0Y2WcwZ1Ec="
+        "value": "v1-bjJ0R21jbGxFMVl0NE1BcUGsj0XHJBLG17GpqsITEhunuwffWTqoD4osNys1d7fb/X6nKMFALbucvHD/Ii2VN95XkSGedIFpbbOwYucJjaw="
     },
     {
         "domain": ".shopee.vn",
@@ -361,7 +348,7 @@
     },
     {
         "domain": ".shopee.vn",
-        "expirationDate": 1809583465.16136,
+        "expirationDate": 1809980771.052828,
         "hostOnly": false,
         "httpOnly": true,
         "name": "SPC_T_IV",
@@ -374,7 +361,7 @@
     },
     {
         "domain": ".shopee.vn",
-        "expirationDate": 1809583465.161209,
+        "expirationDate": 1809980771.0529,
         "hostOnly": false,
         "httpOnly": false,
         "name": "SPC_U",

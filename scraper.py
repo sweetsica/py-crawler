@@ -407,19 +407,44 @@ class MediaScraper:
                 await page.evaluate("window.scrollBy(0, 1000)")
                 await asyncio.sleep(1)
                 
-            rating_section = await page.query_selector("div.product-detail.page-product__detail + div")
+            # Thử nhiều selector mới của page shopee
+            rating_section = await page.query_selector(".product-ratings, div[data-sqe='rating'], div.product-detail.page-product__detail + div")
             if rating_section:
                 print("[*] Đã tìm thấy khu vực ĐÁNH GIÁ SẢN PHẨM")
-                for page_num in range(1, 6): # Lấy tối đa 5 trang đánh giá
+                for page_num in range(1, 51): # Lấy tối đa 50 trang đánh giá
                     print(f"[*] Đang lấy dữ liệu trang {page_num}...")
-                    imgs = await page.query_selector_all("div.product-detail.page-product__detail + div img")
-                    vids = await page.query_selector_all("div.product-detail.page-product__detail + div video")
+                    
+                    nodes = await rating_section.query_selector_all("img, div[style*='background-image']")
+                    vids = await rating_section.query_selector_all("video")
+                    
+                    if not nodes:
+                         nodes = await page.query_selector_all(".shopee-product-rating img, .shopee-product-rating div[style*='background-image']")
+                    if not vids:
+                         vids = await page.query_selector_all(".shopee-product-rating video")
 
-                    print(f"    - Tìm thấy {len(imgs)} thẻ img trong khu vực")
-                    for img in imgs:
-                        src = await img.get_attribute("src")
+                    print(f"    - Tìm thấy {len(nodes)} thẻ media (img/div) trong khu vực reviews")
+                    for node in nodes:
+                        try:
+                            # Cố gắng loại bỏ video-cover nếu nó là hình bìa (tránh lấy trùng ảnh tĩnh của video)
+                            is_video_cover = await node.evaluate("el => { let cn = (el.className || '').toString(); let pcn = (el.parentElement && el.parentElement.className) ? el.parentElement.className.toString() : ''; return cn.includes('video-cover') || pcn.includes('video-cover'); }")
+                            if is_video_cover: continue
+                        except:
+                            pass
+                            
+                        tag = await node.evaluate("el => el.tagName.toLowerCase()")
+                        src = ""
+                        if tag == "img":
+                            src = await node.get_attribute("src") or ""
+                        else:
+                            style = await node.get_attribute("style") or ""
+                            import re
+                            m = re.search(r'url\(["\']?(.*?)["\']?\)', style)
+                            if m: src = m.group(1)
+                            
                         if src and ("susercontent" in src or "shopee" in src):
-                            if "avatar" not in src and "profile" not in src:
+                            if "avatar" not in src and "profile" not in src and "base64" not in src:
+                                # Bỏ đuôi _tn (thumbnail) để lấy ảnh phân giải gốc (full HD)
+                                src = src.replace("_tn", "")
                                 res.append({"type": "image", "url": src})
                                 
                     print(f"    - Tìm thấy {len(vids)} thẻ video trong khu vực")
@@ -428,29 +453,53 @@ class MediaScraper:
                         if src and src.startswith("http"):
                             res.append({"type": "video", "url": src})
                             
-                    # Thử tìm và click nút Next
-                    next_btn = await page.query_selector(".shopee-page-controller button.shopee-icon-button--right")
+                    # Thử tìm và click nút Next với selector dự phòng
+                    next_btn = await page.query_selector(".shopee-page-controller button.shopee-icon-button--right, button:has(svg polyline[points*='11 7 5.5']), button:has(svg polyline[points*='5.5 1.5 11 7 5.5 12.5'])")
                     if next_btn:
                         is_disabled = await next_btn.get_attribute("disabled")
-                        if is_disabled is not None:
+                        class_attr = await next_btn.get_attribute("class")
+                        if is_disabled is not None or (class_attr and "disabled" in class_attr):
                             print("[*] Đã đến trang đánh giá cuối cùng.")
                             break
                         else:
                             print(f"[*] Chuyển sang trang {page_num + 1}...")
                             await next_btn.click()
-                            await asyncio.sleep(2) # Chờ Shopee tải trang mới
+                            await asyncio.sleep(2) # Chờ phần lớn giao diện tải xong
+                            # Phải cuộn để kích hoạt tải ảnh (lazy-load) ở trang mới
+                            for _ in range(4):
+                                await page.evaluate("window.scrollBy(0, 800)")
+                                await asyncio.sleep(0.5)
                     else:
                         print("[*] Không tìm thấy nút chuyển trang.")
                         break
             else:
                 print("[!] Không tìm thấy khu vực ĐÁNH GIÁ SẢN PHẨM, fallback tìm toàn trang")
-                imgs = await page.query_selector_all("img")
+                nodes = await page.query_selector_all("div[class*='rating'] img, div[class*='rating'] div[style*='background-image']")
                 vids = await page.query_selector_all("video")
-                print(f"[*] Tìm thấy {len(imgs)} thẻ img trên toàn trang")
-                for img in imgs:
-                    src = await img.get_attribute("src")
+                if not nodes:
+                    nodes = await page.query_selector_all("img")
+                    
+                print(f"[*] Tìm thấy {len(nodes)} thẻ media trên toàn trang")
+                for node in nodes:
+                    try:
+                        is_video_cover = await node.evaluate("el => { let cn = (el.className || '').toString(); let pcn = (el.parentElement && el.parentElement.className) ? el.parentElement.className.toString() : ''; return cn.includes('video-cover') || pcn.includes('video-cover'); }")
+                        if is_video_cover: continue
+                    except Exception:
+                        pass
+                        
+                    tag = await node.evaluate("el => el.tagName.toLowerCase()")
+                    src = ""
+                    if tag == "img":
+                        src = await node.get_attribute("src") or ""
+                    else:
+                        style = await node.get_attribute("style") or ""
+                        import re
+                        m = re.search(r'url\(["\']?(.*?)["\']?\)', style)
+                        if m: src = m.group(1)
+                        
                     if src and ("susercontent" in src or "shopee" in src):
-                        if "avatar" not in src and "profile" not in src:
+                        if "avatar" not in src and "profile" not in src and "base64" not in src:
+                            src = src.replace("_tn", "")
                             res.append({"type": "image", "url": src})
                             
                 print(f"[*] Tìm thấy {len(vids)} thẻ video trên toàn trang")
