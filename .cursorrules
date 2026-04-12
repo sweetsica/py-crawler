@@ -7,3 +7,6 @@
    - Mọi hoạt động cập nhật, sửa lỗi (bug fixes), cấu trúc mới PHẢI ĐƯỢC GHI VÀO file `PROJECT_STATUS.md` dưới định dạng Markdown để lưu giữ ngữ cảnh.
 3. **Dọn dẹp tự động (BẮT BUỘC):**
    - **Mọi file test, script kiểm thử, file tạm thời, log, ảnh debug sau khi sinh ra dùng để test xong PHẢI TỰ ĐỘNG XÓA ĐI NGAY LẬP TỨC.** Tuyệt đối không cần đợi người dùng nhắc nhở, dự án phải luôn trong trạng thái không có rác.
+4. **Luôn ghi chép tóm tắt những gì đã thay đổi vào index.py**
+   - **Cuối file index.py có một đoạn <div style="margin-top: 2rem; text-align: center; color: var(--text-muted); font-size: 10px;"> *Nội dung cập nhật chính*</div>** Việc viết lại sẽ giúp người dùng nắm bắt ngắn gọn tình trạng dự án.
+   - **Dưới dòng đó nên ghi luôn cả nhánh branch hiện tại**

@@ -194,8 +194,9 @@ async def api_extract(request: Request):
 
 if __name__ == "__main__":
     print("\n" + "="*50)
-    print("[!] SERVER ĐANG KHỞI CHẠY VỚI PHIÊN BẢN MỚI (03:05)")
-    print("[!] Đã bọc lỗi 500 và sửa cơ chế nạp Cookie")
+    print("[!] SERVER ĐANG KHỞI CHẠY - CẬP NHẬT 19:10 (12/04)")
+    print("[!] Đã dọn dẹp file rác và cập nhật nhật ký dự án")
+    print(f"[!] Branch: main050426-01")
     print("="*50 + "\n")
     port = int(os.environ.get("PORT", 2603))
     uvicorn.run(app, host="0.0.0.0", port=port)

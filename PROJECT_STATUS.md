@@ -38,3 +38,4 @@ Hệ thống sử dụng automation browser kết hợp cookie session tĩnh nh�
 *   Trước khi sửa scraper cho một trang bị hỏng, khuyên bạn nên yêu cầu user in ra snapshot của phần mã DOM bị lỗi (vì UI MXH thay đổi hàng ngày).
 *   Khi cần log hãy log ra terminal nhưng **KHÔNG BAO GIỜ log token cookie** đầy đủ lên màn hình vì lý do bảo mật.
 *   **Dọn dẹp tệp tin tạm thờI:** Rất hay sinh ra các tệp tin script python để test, screenshot `*.png` hay `html` dump. Hãy LUÔN xóa sạch các tệp rác này trước khi hoàn thành một phiên sửa lỗi.
+*   \*(Cập nhật 12/04)\* Đã dọn dẹp toàn bộ file rác (`debug.png`, `test_shopee.py`, `tmp_res.json`, `__pycache__`) để repo sạch sẽ.
